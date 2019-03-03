@@ -1,4 +1,4 @@
-package providers
+package api
 
 //Image defines Image type
 type Image struct {
@@ -14,6 +14,6 @@ type Image struct {
 
 //ImageManager defines image management functions a anyclouds provider must provide
 type ImageManager interface {
-	List(filter *ResourceFilter) ([]Image, error)
+	List() ([]Image, error)
 	Get(id string) (*Image, error)
 }

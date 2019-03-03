@@ -1,10 +1,10 @@
 package openstack
 
 import (
-	"fmt"
-	"reflect"
+	"io"
 
-	"github.com/SebastienDorgan/anyclouds/providers"
+	"github.com/SebastienDorgan/anyclouds/api"
+	"github.com/spf13/viper"
 
 	gc "github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
@@ -39,7 +39,7 @@ type Config struct {
 	DomainName string `json:"domain_name,omitempty"`
 
 	// The TenantID and TenantName fields are optional for the Identity V2 API.
-	// Some providers allow you to specify a TenantName instead of the TenantId.
+	// Some api allow you to specify a TenantName instead of the TenantId.
 	// Some require both. Your provider's authentication policies will determine
 	// how these fields influence authentication.
 	TenantID   string `json:"tenant_id,omitempty"`
@@ -99,20 +99,24 @@ type Provider struct {
 	client               *gc.ProviderClient
 	Compute              *gc.ServiceClient
 	Network              *gc.ServiceClient
-	imagesManager        *ImageManager
-	networkManager       *NetworkManager
-	templateManager      *InstanceTemplateManager
-	instanceManager      *InstanceManager
-	securityGroupManager *SecurityGroupManager
-	volumeManager        *VolumeManager
+	Volume               *gc.ServiceClient
+	Name                 string
+	ImagesManager        ImageManager
+	NetworkManager       NetworkManager
+	TemplateManager      ServerTemplateManager
+	ServerManager        ServerManager
+	SecurityGroupManager SecurityGroupManager
+	VolumeManager        VolumeManager
 }
 
 //Init initialize OpenStack Provider
-func (p *Provider) Init(config interface{}) error {
-	cfg, ok := config.(Config)
-	if !ok {
-		return fmt.Errorf("Wrong argument: OpenStack provider init method needs argument of type %T, %T found",
-			reflect.TypeOf(Config{}), reflect.TypeOf(config))
+func (p *Provider) Init(config io.Reader) error {
+	v := viper.New()
+	v.ReadConfig(config)
+	cfg := Config{}
+	err := v.Unmarshal(&cfg)
+	if err != nil {
+		return errors.Wrap(err, "Error reading provider configuration")
 	}
 	opts := gc.AuthOptions{
 		IdentityEndpoint: cfg.IdentityEndpoint,
@@ -128,77 +132,67 @@ func (p *Provider) Init(config interface{}) error {
 	}
 
 	// Openstack client
-	client, err := openstack.AuthenticatedClient(opts)
+	p.client, err = openstack.AuthenticatedClient(opts)
 	if err != nil {
-		return errors.Wrap(err, "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
 	}
-	p.client = client
-
 	// Compute API
-	compute, err := openstack.NewComputeV2(client, gc.EndpointOpts{
+	p.Compute, err = openstack.NewComputeV2(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(err, "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
 	}
-	p.Compute = compute
-
 	//Network API
-	network, err := openstack.NewNetworkV2(client, gc.EndpointOpts{
+	p.Network, err = openstack.NewNetworkV2(p.client, gc.EndpointOpts{
 		Name:   "neutron",
 		Region: cfg.Region,
 	})
-	p.Network = network
 	if err != nil {
-		return errors.Wrap(err, "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
 	}
-	p.imagesManager = &ImageManager{
-		OpenStack: p,
+	//Volume API
+	p.Volume, err = openstack.NewBlockStorageV1(p.client, gc.EndpointOpts{
+		Region: cfg.Region,
+	})
+	if err != nil {
+		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
 	}
-	p.networkManager = &NetworkManager{
-		OpenStack: p,
-	}
-	p.instanceManager = &InstanceManager{
-		OpenStack: p,
-	}
-	p.templateManager = &InstanceTemplateManager{
-		OpenStack: p,
-	}
-	p.volumeManager = &VolumeManager{
-		OpenStack: p,
-	}
-	p.securityGroupManager = &SecurityGroupManager{
-		OpenStack: p,
-	}
+	p.ImagesManager.OpenStack = p
+	p.NetworkManager.OpenStack = p
+	p.ServerManager.OpenStack = p
+	p.TemplateManager.OpenStack = p
+	p.VolumeManager.OpenStack = p
+	p.SecurityGroupManager.OpenStack = p
 	return nil
 }
 
 //GetNetworkManager returns an OpenStack NetworkManager
-func (p *Provider) GetNetworkManager() providers.NetworkManager {
-	return p.networkManager
+func (p *Provider) GetNetworkManager() api.NetworkManager {
+	return &p.NetworkManager
 }
 
 //GetImageManager returns an OpenStack ImageManager
-func (p *Provider) GetImageManager() providers.ImageManager {
-	return p.imagesManager
+func (p *Provider) GetImageManager() api.ImageManager {
+	return &p.ImagesManager
 }
 
 //GetTemplateManager returns an OpenStack IntanceTemplateManager
-func (p *Provider) GetTemplateManager() providers.InstanceTemplateManager {
-	return p.templateManager
+func (p *Provider) GetTemplateManager() api.ServerTemplateManager {
+	return &p.TemplateManager
 }
 
 //GetSecurityGroupManager returns an OpenStack SecurityGroupManager
-func (p *Provider) GetSecurityGroupManager() providers.SecurityGroupManager {
-	return p.securityGroupManager
+func (p *Provider) GetSecurityGroupManager() api.SecurityGroupManager {
+	return &p.SecurityGroupManager
 }
 
-//GetInstanceManager returns an OpenStack InstanceManager
-func (p *Provider) GetInstanceManager() providers.InstanceManager {
-	return p.instanceManager
+//GetServerManager returns an OpenStack ServerManager
+func (p *Provider) GetServerManager() api.ServerManager {
+	return &p.ServerManager
 }
 
 //GetVolumeManager returns an OpenStack VolumeManager
-func (p *Provider) GetVolumeManager() providers.VolumeManager {
-	return p.volumeManager
+func (p *Provider) GetVolumeManager() api.VolumeManager {
+	return &p.VolumeManager
 }

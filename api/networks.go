@@ -1,4 +1,4 @@
-package providers
+package api
 
 //Network defines network properties
 type Network struct {
@@ -54,11 +54,11 @@ type Subnet struct {
 type NetworkManager interface {
 	CreateNetwork(options *NetworkOptions) (*Network, error)
 	DeleteNetwork(id string) error
-	ListNetworks(filter *ResourceFilter) ([]Network, error)
+	ListNetworks() ([]Network, error)
 	GetNetwork(id string) (*Network, error)
 
 	CreateSubnet(options *SubnetOptions) (*Subnet, error)
 	DeleteSubnet(id string) error
-	ListSubnets(networkID string, filter *ResourceFilter) ([]Subnet, error)
+	ListSubnets(networkID string) ([]Subnet, error)
 	GetSubnet(id string) (*Subnet, error)
 }

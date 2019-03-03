@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SebastienDorgan/anyclouds/providers"
+	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/SebastienDorgan/retry"
 	gc "github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/routers"
@@ -20,14 +20,14 @@ type NetworkManager struct {
 }
 
 //CreateNetwork creates a network
-func (mgr *NetworkManager) CreateNetwork(options *providers.NetworkOptions) (*providers.Network, error) {
+func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
 	up := true
 	opts := networks.CreateOpts{Name: options.Name, AdminStateUp: &up}
 	network, err := networks.Create(mgr.OpenStack.Network, opts).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating network")
 	}
-	return &providers.Network{
+	return &api.Network{
 		ID:   network.ID,
 		Name: network.Name,
 	}, nil
@@ -43,11 +43,8 @@ func (mgr *NetworkManager) DeleteNetwork(id string) error {
 }
 
 //ListNetworks lists networks
-func (mgr *NetworkManager) ListNetworks(filter *providers.ResourceFilter) ([]providers.Network, error) {
-	opts := networks.ListOpts{
-		ID:   filter.ID,
-		Name: filter.Name,
-	}
+func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
+	opts := networks.ListOpts{}
 	page, err := networks.List(mgr.OpenStack.Network, opts).AllPages()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing network")
@@ -56,9 +53,9 @@ func (mgr *NetworkManager) ListNetworks(filter *providers.ResourceFilter) ([]pro
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing network")
 	}
-	nets := []providers.Network{}
+	nets := []api.Network{}
 	for _, n := range l {
-		net := providers.Network{
+		net := api.Network{
 			ID:   n.ID,
 			Name: n.Name,
 		}
@@ -68,12 +65,12 @@ func (mgr *NetworkManager) ListNetworks(filter *providers.ResourceFilter) ([]pro
 }
 
 //GetNetwork returns the configuration of the network identified by id
-func (mgr *NetworkManager) GetNetwork(id string) (*providers.Network, error) {
+func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
 	n, err := networks.Get(mgr.OpenStack.Network, id).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error getting network")
 	}
-	return &providers.Network{
+	return &api.Network{
 		ID:   n.ID,
 		Name: n.Name,
 	}, nil
@@ -133,7 +130,7 @@ func (mgr *NetworkManager) findRouter(name string) (*routers.Router, error) {
 }
 
 //CreateSubnet creates a subnet
-func (mgr *NetworkManager) CreateSubnet(options *providers.SubnetOptions) (*providers.Subnet, error) {
+func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet, error) {
 	dhcp := true
 	opts := subnets.CreateOpts{
 		NetworkID:  options.NetworkID,
@@ -172,10 +169,10 @@ func (mgr *NetworkManager) CreateSubnet(options *providers.SubnetOptions) (*prov
 		return nil, errors.Wrap(err, "Error creating subnet")
 	}
 
-	return &providers.Subnet{
+	return &api.Subnet{
 		ID:        subnet.ID,
 		Name:      subnet.Name,
-		IPVersion: providers.IPVersion(subnet.IPVersion),
+		IPVersion: api.IPVersion(subnet.IPVersion),
 		CIDR:      subnet.CIDR,
 		NetworkID: subnet.NetworkID,
 	}, nil
@@ -189,25 +186,23 @@ func (mgr *NetworkManager) DeleteSubnet(id string) error {
 	if nerr != nil || r == nil {
 		return errors.Wrap(nerr, "Error creating subnet: cannot find router associated to subnet")
 	}
-	deleteRouter := func() interface{} {
-		return mgr.deleteRouter(r.ID)
+	deleteRouter := func() (interface{}, error) {
+		return nil, mgr.deleteRouter(r.ID)
 	}
-	success := func(res interface{}) bool {
-		return res == nil
+	success := func(res interface{}, e error) bool {
+		return e == nil
 	}
 	res := retry.With(deleteRouter).For(30 * time.Second).Every(5 * time.Second).Until(success).Go()
 	if res.Timeout {
-		nerr = res.LastReturnedValue.(error)
+		nerr = res.LastValue.(error)
 	}
 	return errors.Wrap(ProviderError(nerr), "Error creating subnet: cannot delete router assicated to subnet")
 }
 
 //ListSubnets lists the subnet
-func (mgr *NetworkManager) ListSubnets(networkID string, filter *providers.ResourceFilter) ([]providers.Subnet, error) {
+func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 	page, err := subnets.List(mgr.OpenStack.Network, subnets.ListOpts{
 		NetworkID: networkID,
-		Name:      filter.Name,
-		ID:        filter.ID,
 	}).AllPages()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing subnets")
@@ -216,12 +211,12 @@ func (mgr *NetworkManager) ListSubnets(networkID string, filter *providers.Resou
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing subnets")
 	}
-	res := []providers.Subnet{}
+	res := []api.Subnet{}
 	for _, sn := range l {
-		item := providers.Subnet{
+		item := api.Subnet{
 			CIDR:      sn.CIDR,
 			ID:        sn.ID,
-			IPVersion: providers.IPVersion(sn.IPVersion),
+			IPVersion: api.IPVersion(sn.IPVersion),
 			Name:      sn.Name,
 			NetworkID: sn.NetworkID,
 		}
@@ -231,15 +226,15 @@ func (mgr *NetworkManager) ListSubnets(networkID string, filter *providers.Resou
 }
 
 //GetSubnet returns the configuration of the subnet identified by id
-func (mgr *NetworkManager) GetSubnet(id string) (*providers.Subnet, error) {
+func (mgr *NetworkManager) GetSubnet(id string) (*api.Subnet, error) {
 	sn, err := subnets.Get(mgr.OpenStack.Network, id).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error getting subnet")
 	}
-	return &providers.Subnet{
+	return &api.Subnet{
 		CIDR:      sn.CIDR,
 		ID:        sn.ID,
-		IPVersion: providers.IPVersion(sn.IPVersion),
+		IPVersion: api.IPVersion(sn.IPVersion),
 		Name:      sn.Name,
 		NetworkID: sn.NetworkID,
 	}, nil
