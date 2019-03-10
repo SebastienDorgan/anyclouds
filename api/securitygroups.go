@@ -62,6 +62,7 @@ type SecurityGroup struct {
 	ID          string
 	Name        string
 	Description string
+	NetworkID   string
 	Rules       []SecurityRule
 }
 

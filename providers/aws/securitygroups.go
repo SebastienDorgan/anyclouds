@@ -32,7 +32,7 @@ func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating security groups")
 	}
-	g, err := mgr.Get(out.GroupId)
+	g, err := mgr.Get(*out.GroupId)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating security groups")
 	}
