@@ -11,8 +11,8 @@ type TemplateSelector struct {
 	NumberOfCPUCore int         `json:"number_of_cpu_core,omitempty"`
 	//in GHz
 	CPUCoreFrequency float64 `json:"cpu_core_frequency,omitempty"`
-	//in GB
-	RAMSize float64 `json:"ram_size,omitempty"`
+	//in MB
+	RAMSize int `json:"ram_size,omitempty"`
 	//in GB
 	SystemDiskSize int `json:"system_disk_size,omitempty"`
 	//in I/O per seconds

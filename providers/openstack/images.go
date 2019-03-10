@@ -24,10 +24,12 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 	var imgList []api.Image
 	for _, img := range imageList {
 		imgList = append(imgList, api.Image{
-			ID:      img.ID,
-			Name:    img.Name,
-			MinDisk: 0,
-			MinRAM:  0,
+			ID:        img.ID,
+			Name:      img.Name,
+			MinDisk:   img.MinDiskGigabytes,
+			MinRAM:    img.MinRAMMegabytes,
+			CreatedAt: img.CreatedAt,
+			UpdatedAt: img.UpdatedAt,
 		})
 	}
 	return imgList, nil
@@ -40,9 +42,11 @@ func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 		return nil, errors.Wrap(ProviderError(err), "Error getting image: %s")
 	}
 	return &api.Image{
-		ID:      img.ID,
-		Name:    img.Name,
-		MinDisk: 0,
-		MinRAM:  0,
+		ID:        img.ID,
+		Name:      img.Name,
+		MinDisk:   img.MinDiskGigabytes,
+		MinRAM:    img.MinRAMMegabytes,
+		CreatedAt: img.CreatedAt,
+		UpdatedAt: img.UpdatedAt,
 	}, nil
 }

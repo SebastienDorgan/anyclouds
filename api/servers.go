@@ -1,6 +1,9 @@
 package api
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 //ServerState possible states of an Server
 type ServerState string
@@ -26,33 +29,38 @@ const (
 
 //Server defines Server properties
 type Server struct {
-	ID         string
-	Name       string
-	TemplateID string
-	ImageID    string
-	PrivateIPs map[IPVersion][]string
-	PublicIPv4 string
-	PublicIPv6 string
-	State      ServerState
+	ID             string
+	Name           string
+	TemplateID     string
+	ImageID        string
+	SecurityGroups []string
+	PrivateIPs     map[IPVersion][]string
+	PublicIPv4     string
+	PublicIPv6     string
+	State          ServerState
+	CreatedAt      time.Time
+	KeyPairName    string
 }
 
-//ServerOptions defines options to use when creating an Server
-type ServerOptions struct {
+//CreateServerOptions defines options to use when creating an Server
+type CreateServerOptions struct {
 	Name            string
 	TemplateID      string
 	ImageID         string
-	SecurityGroupID string
+	SecurityGroups  []string
 	Networks        []string
 	PublicIP        bool
 	BootstrapScript io.Reader
+	KeyPairName     string
 }
 
 //ServerManager defines Server management functions an anyclouds provider must provide
 type ServerManager interface {
-	Create(options *ServerOptions) (*Server, error)
+	Create(options *CreateServerOptions) (*Server, error)
 	Delete(id string) error
 	List() ([]Server, error)
 	Get(id string) (*Server, error)
 	Start(id string) error
 	Stop(id string) error
+	Resize(id string, templateID string) error
 }

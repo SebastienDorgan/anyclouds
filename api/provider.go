@@ -6,6 +6,7 @@ import "io"
 type Provider interface {
 	Init(config io.Reader) error
 	Name() string
+	GetKeyPairManager() KeyPairManager
 	GetNetworkManager() NetworkManager
 	GetImageManager() ImageManager
 	GetTemplateManager() ServerTemplateManager

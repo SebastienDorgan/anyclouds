@@ -1,5 +1,7 @@
 package api
 
+import "time"
+
 //CPUArch enum defining CPU Architectures
 type CPUArch string
 
@@ -19,12 +21,14 @@ type ServerTemplate struct {
 	ID              string
 	Name            string
 	NumberOfCPUCore int
-	//in GB
-	RAMSize float64
+	//in MB
+	RAMSize int
 	//in GB
 	SystemDiskSize int
 	//in GB
 	EphemeralDiskSize int
+	CreatedAt         time.Time
+	Arch              CPUArch
 }
 
 //ServerTemplateManager defines Server template management functions a anyclouds provider must provide

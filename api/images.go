@@ -1,5 +1,7 @@
 package api
 
+import "time"
+
 //Image defines Image type
 type Image struct {
 	//unique identifier of the image
@@ -10,6 +12,10 @@ type Image struct {
 	MinDisk int
 	//minimum RAM requirements to run the image (in MB)
 	MinRAM int
+	//Creation date of the image
+	CreatedAt time.Time
+	//last update time
+	UpdatedAt time.Time
 }
 
 //ImageManager defines image management functions a anyclouds provider must provide

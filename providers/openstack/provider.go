@@ -101,6 +101,7 @@ type Provider struct {
 	Network              *gc.ServiceClient
 	Volume               *gc.ServiceClient
 	Name                 string
+	KeyPairManager       KeyPairManager
 	ImagesManager        ImageManager
 	NetworkManager       NetworkManager
 	TemplateManager      ServerTemplateManager
@@ -164,7 +165,13 @@ func (p *Provider) Init(config io.Reader) error {
 	p.TemplateManager.OpenStack = p
 	p.VolumeManager.OpenStack = p
 	p.SecurityGroupManager.OpenStack = p
+	p.KeyPairManager.OpenStack = p
 	return nil
+}
+
+//GetKeyPairManager returns aws KeyPairManager
+func (p *Provider) GetKeyPairManager() api.KeyPairManager {
+	return &p.KeyPairManager
 }
 
 //GetNetworkManager returns an OpenStack NetworkManager

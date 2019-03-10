@@ -1,6 +1,7 @@
 package openstack
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/SebastienDorgan/anyclouds/api"
@@ -17,18 +18,39 @@ type ServerManager struct {
 	OpenStack *Provider
 }
 
-func (mgr *ServerManager) createServer(options *api.ServerOptions) (*servers.Server, error) {
+//key_name
+
+type createServerOpts struct {
+	servers.CreateOpts
+	KeyName string
+}
+
+func (o createServerOpts) ToServerCreateMap() (map[string]interface{}, error) {
+	m, err := o.CreateOpts.ToServerCreateMap()
+	if err != nil {
+		return nil, err
+	}
+	m["key_name"] = o.KeyName
+	return m, nil
+
+}
+func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*servers.Server, error) {
 	opts := servers.CreateOpts{
-		FlavorRef: options.TemplateID,
-		ImageRef:  options.ImageID,
-		Name:      options.Name,
+		FlavorRef:      options.TemplateID,
+		ImageRef:       options.ImageID,
+		Name:           options.Name,
+		SecurityGroups: options.SecurityGroups,
 	}
 	for _, n := range options.Networks {
 		opts.Networks = append(opts.Networks, servers.Network{
 			UUID: n,
 		})
 	}
-	return servers.Create(mgr.OpenStack.Compute, opts).Extract()
+
+	return servers.Create(mgr.OpenStack.Compute, createServerOpts{
+		CreateOpts: opts,
+		KeyName:    options.KeyPairName,
+	}).Extract()
 }
 
 func (mgr *ServerManager) waitNotTransientState(srv *servers.Server) *retry.Result {
@@ -40,11 +62,10 @@ func (mgr *ServerManager) waitNotTransientState(srv *servers.Server) *retry.Resu
 		return state != api.ServerTransientState
 	}
 	return retry.With(get).For(3 * time.Minute).Every(time.Second).Until(finished).Go()
-
 }
 
 //Create creates an Server with options
-func (mgr *ServerManager) Create(options *api.ServerOptions) (*api.Server, error) {
+func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
 	srv, err := mgr.createServer(options)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating server")
@@ -154,20 +175,31 @@ func adresses(addresses map[string]interface{}) map[api.IPVersion][]string {
 	return addrs
 }
 
+func ids(m []map[string]interface{}) []string {
+	kl := make([]string, len(m))
+	for i, m := range m {
+		kl[i] = m["id"].(string)
+	}
+	return kl
+}
+
 func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 	if srv == nil {
 		return nil
 	}
 	flavorID, _ := flavors.IDFromName(mgr.OpenStack.Compute, srv.Flavor["original_name"].(string))
 	return &api.Server{
-		ID:         srv.ID,
-		ImageID:    srv.Image["id"].(string),
-		TemplateID: flavorID,
-		State:      state(srv.Status),
-		PublicIPv4: srv.AccessIPv4,
-		PublicIPv6: srv.AccessIPv6,
-		PrivateIPs: adresses(srv.Addresses),
-		Name:       srv.Name,
+		ID:             srv.ID,
+		ImageID:        srv.Image["id"].(string),
+		TemplateID:     flavorID,
+		State:          state(srv.Status),
+		PublicIPv4:     srv.AccessIPv4,
+		PublicIPv6:     srv.AccessIPv6,
+		PrivateIPs:     adresses(srv.Addresses),
+		Name:           srv.Name,
+		CreatedAt:      srv.Created,
+		KeyPairName:    srv.KeyName,
+		SecurityGroups: ids(srv.SecurityGroups),
 	}
 }
 
@@ -206,4 +238,47 @@ func (mgr *ServerManager) Start(id string) error {
 func (mgr *ServerManager) Stop(id string) error {
 	err := startstop.Stop(mgr.OpenStack.Compute, id).ExtractErr()
 	return errors.Wrap(ProviderError(err), "Error stoping server")
+}
+
+func (mgr *ServerManager) waitResize(id string) *retry.Result {
+	get := func() (interface{}, error) {
+		return servers.Get(mgr.OpenStack.Compute, id).Extract()
+	}
+	finished := func(v interface{}, e error) bool {
+		state := v.(*servers.Server).Status
+		return state == "RESIZE"
+	}
+	return retry.With(get).For(3 * time.Minute).Every(time.Second).Until(finished).Go()
+}
+
+//Resize resize a server
+func (mgr *ServerManager) Resize(id string, templateID string) error {
+	err := servers.Resize(mgr.OpenStack.Compute, id, servers.ResizeOpts{
+		FlavorRef: templateID,
+	}).ExtractErr()
+	if err != nil {
+		servers.RevertResize(mgr.OpenStack.Compute, id)
+		return errors.Wrap(ProviderError(err), "Error resizing server")
+	}
+	res := mgr.waitResize(id)
+	if res.LastError != nil {
+		return errors.Wrap(ProviderError(res.LastError), "Error resizing server")
+	}
+	srv := res.LastValue.(*servers.Server)
+	if srv == nil {
+		servers.RevertResize(mgr.OpenStack.Compute, id)
+		err := fmt.Errorf("Unable to retrive server state")
+		return errors.Wrap(err, "Error resizing server")
+	}
+	if srv.Status != "RESIZE" {
+		servers.RevertResize(mgr.OpenStack.Compute, id)
+		err := fmt.Errorf("Unexpected server state: %s", srv.Status)
+		return errors.Wrap(err, "Error resizing server")
+	}
+	err = servers.ConfirmResize(mgr.OpenStack.Compute, id).ExtractErr()
+	if err != nil {
+		servers.RevertResize(mgr.OpenStack.Compute, id)
+		return errors.Wrap(ProviderError(err), "Error resizing server")
+	}
+	return nil
 }

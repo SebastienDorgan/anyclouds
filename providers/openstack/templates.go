@@ -25,9 +25,10 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 			ID:                f.ID,
 			Name:              f.Name,
 			NumberOfCPUCore:   f.VCPUs,
-			RAMSize:           float64(f.RAM) / 1024.0,
+			RAMSize:           f.RAM,
 			SystemDiskSize:    f.Disk,
 			EphemeralDiskSize: f.Ephemeral,
+			Arch:              api.ArchUnknown,
 		}
 		tpls = append(tpls, t)
 	}
@@ -44,8 +45,9 @@ func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
 		ID:                f.ID,
 		Name:              f.Name,
 		NumberOfCPUCore:   f.VCPUs,
-		RAMSize:           float64(f.RAM) / 1024.0,
+		RAMSize:           f.RAM,
 		SystemDiskSize:    f.Disk,
 		EphemeralDiskSize: f.Ephemeral,
+		Arch:              api.ArchUnknown,
 	}, nil
 }

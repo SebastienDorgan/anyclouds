@@ -69,6 +69,7 @@ type SecurityGroup struct {
 type SecurityGroupOptions struct {
 	Name        string
 	Description string
+	NetworkID   string
 }
 
 //SecurityGroupManager defines security group management functions a anyclouds provider must provide
@@ -84,6 +85,12 @@ type SecurityGroupManager interface {
 	//Get security group
 	//fetch rules
 	Get(id string) (*SecurityGroup, error)
+	//Add a server to a security group
+	AddServer(id string, serverID string) error
+	//Remove remove a server from a security group
+	RemoveServer(id string, serverID string) error
+	//ListByServer list security groups by server
+	ListByServer(serverID string) ([]SecurityGroup, error)
 	//Add a rule to a security group
 	AddRule(id string, rule *SecurityRuleOptions) (*SecurityRule, error)
 	//Delete a rule
