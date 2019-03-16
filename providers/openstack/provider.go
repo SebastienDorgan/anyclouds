@@ -111,8 +111,9 @@ type Provider struct {
 }
 
 //Init initialize OpenStack Provider
-func (p *Provider) Init(config io.Reader) error {
+func (p *Provider) Init(config io.Reader, format string) error {
 	v := viper.New()
+	v.SetConfigType(format)
 	v.ReadConfig(config)
 	cfg := Config{}
 	err := v.Unmarshal(&cfg)

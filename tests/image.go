@@ -2,23 +2,26 @@ package tests
 
 import (
 	"reflect"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 )
 
-//ImageManager an api.ImageManager implementation
-var ImageManager api.ImageManager
+//ImageManagerTestSuite test suite for api.ImageManager
+type ImageManagerTestSuite struct {
+	suite.Suite
+	Mgr api.ImageManager
+}
 
 //TestImageManager Canonical test for ImageManager implementation
-func TestImageManager(t *testing.T) {
-	images, err := ImageManager.List()
-	assert.NoError(t, err)
+func (s *ImageManagerTestSuite) TestImageManager() {
+	images, err := s.Mgr.List()
+	assert.NoError(s.T(), err)
 	for _, img := range images {
-		image, err := ImageManager.Get(img.ID)
-		assert.NoError(t, err)
-		assert.True(t, reflect.DeepEqual(img, image))
+		image, err := s.Mgr.Get(img.ID)
+		assert.NoError(s.T(), err)
+		assert.True(s.T(), reflect.DeepEqual(img, *image))
 	}
 }

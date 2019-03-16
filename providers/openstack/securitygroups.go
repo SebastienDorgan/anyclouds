@@ -19,10 +19,9 @@ type SecurityGroupManager struct {
 func group(g *groups.SecGroup) *api.SecurityGroup {
 	tokens := strings.Split("/", g.Name)
 	return &api.SecurityGroup{
-		Name:        tokens[0],
-		NetworkID:   tokens[1],
-		ID:          g.ID,
-		Description: g.Description,
+		Name:      tokens[0],
+		NetworkID: tokens[1],
+		ID:        g.ID,
 	}
 }
 
@@ -184,9 +183,8 @@ func (sec *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGr
 	result := []api.SecurityGroup{}
 	for _, g := range groups {
 		group := api.SecurityGroup{
-			Description: g.Description,
-			ID:          g.ID,
-			Name:        g.Name,
+			ID:   g.ID,
+			Name: g.Name,
 		}
 		result = append(result, group)
 	}

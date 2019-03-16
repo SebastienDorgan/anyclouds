@@ -87,16 +87,12 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 	return result, nil
 }
 
-//mustTime skip error
-func mustTime(v time.Time, e error) time.Time {
-	return v
-}
-
 func image(img *ec2.Image) *api.Image {
-	creationDate, _ := time.Parse("2012-08-28T10:03:00+0000", *img.CreationDate)
+	creationDate, _ := time.Parse(time.RFC3339, *img.CreationDate)
 	return &api.Image{
 		CreatedAt: creationDate,
 		ID:        *img.ImageId,
+		Name:      *img.Name,
 		MinDisk:   0,
 		MinRAM:    0,
 		UpdatedAt: creationDate,

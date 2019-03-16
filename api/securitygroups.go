@@ -59,11 +59,10 @@ type SecurityRuleOptions struct {
 
 //SecurityGroup defines security groups properties
 type SecurityGroup struct {
-	ID          string
-	Name        string
-	Description string
-	NetworkID   string
-	Rules       []SecurityRule
+	ID        string
+	Name      string
+	NetworkID string
+	Rules     []SecurityRule
 }
 
 //SecurityGroupOptions defines security groups properties

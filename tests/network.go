@@ -5,24 +5,28 @@ import (
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-//NetworkManager an api.NetworkManager implementation
-var NetworkManager api.NetworkManager
+//NetworkManagerTestSuite test suite off api.NetworkManager
+type NetworkManagerTestSuite struct {
+	suite.Suite
+	Mgr api.NetworkManager
+}
 
 //TestNetworks Canonical test for NetworkManager implementation
-func TestNetworks(t *testing.T) {
-	networks, err := NetworkManager.ListNetworks()
+func (s *NetworkManagerTestSuite) TestNetworks(t *testing.T) {
+	networks, err := s.Mgr.ListNetworks()
 	assert.NoError(t, err)
 	nnetworks := len(networks)
 
 	opts := api.NetworkOptions{
 		Name: "nettest",
 	}
-	net, err := NetworkManager.CreateNetwork(&opts)
+	net, err := s.Mgr.CreateNetwork(&opts)
 	assert.NoError(t, err)
 
-	networks, err = NetworkManager.ListNetworks()
+	networks, err = s.Mgr.ListNetworks()
 	assert.Equal(t, nnetworks+1, len(networks))
 
 	found := false
@@ -34,7 +38,7 @@ func TestNetworks(t *testing.T) {
 	}
 	assert.True(t, found)
 
-	err = NetworkManager.DeleteNetwork(net.ID)
+	err = s.Mgr.DeleteNetwork(net.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, nnetworks, len(networks))
 

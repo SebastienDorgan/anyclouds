@@ -40,6 +40,7 @@ type Server struct {
 	State          ServerState
 	CreatedAt      time.Time
 	KeyPairName    string
+	Spot           bool
 }
 
 //CreateServerOptions defines options to use when creating an Server
@@ -52,6 +53,8 @@ type CreateServerOptions struct {
 	PublicIP        bool
 	BootstrapScript io.Reader
 	KeyPairName     string
+	Spot            bool
+	BookinDuration  time.Duration
 }
 
 //ServerManager defines Server management functions an anyclouds provider must provide

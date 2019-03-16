@@ -10,8 +10,15 @@ type ServerManager struct {
 	AWS *Provider
 }
 
+func createSpotInstance(options *api.CreateServerOptions) (*api.Server, error) {
+	return nil, nil
+}
+
 //Create creates an Server with options
 func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
+	if options.Spot {
+		return createSpotInstance(options)
+	}
 	return nil, nil
 }
 

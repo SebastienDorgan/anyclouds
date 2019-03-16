@@ -9,16 +9,20 @@ import (
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-//KeyPairManager an api.KeyPairManager implementation
-var KeyPairManager api.KeyPairManager
+//KeyPairManagerTestSuite test suite off api.KeyPairManagers
+type KeyPairManagerTestSuite struct {
+	suite.Suite
+	Mgr api.KeyPairManager
+}
 
 //TestKeyPairManager Canonical test for KeyPairManager implementation
-func TestKeyPairManager(t *testing.T) {
-	KeyPairManager.Delete("pktest")
+func (s *KeyPairManagerTestSuite) TestKeyPairManager(t *testing.T) {
+	s.Mgr.Delete("pktest")
 
-	keypairs, err := KeyPairManager.List()
+	keypairs, err := s.Mgr.List()
 	assert.NoError(t, err)
 	nkeys := len(keypairs)
 
@@ -27,10 +31,10 @@ func TestKeyPairManager(t *testing.T) {
 	pub, _ := ssh.NewPublicKey(&publicKey)
 	pubBytes := ssh.MarshalAuthorizedKey(pub)
 
-	err = KeyPairManager.Load("pktest", pubBytes)
+	err = s.Mgr.Load("pktest", pubBytes)
 	assert.NoError(t, err)
 
-	keypairs, err = KeyPairManager.List()
+	keypairs, err = s.Mgr.List()
 	assert.NoError(t, err)
 	assert.Equal(t, nkeys+1, len(keypairs))
 
@@ -43,7 +47,7 @@ func TestKeyPairManager(t *testing.T) {
 	}
 	assert.True(t, found)
 
-	err = KeyPairManager.Delete("pktest")
+	err = s.Mgr.Delete("pktest")
 	assert.NoError(t, err)
 	assert.Equal(t, nkeys, len(keypairs))
 
