@@ -22,14 +22,14 @@ type NetworkManager struct {
 //CreateNetwork creates a network
 func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
 	up := true
-	opts := networks.CreateOpts{Name: options.Name, AdminStateUp: &up}
+	opts := networks.CreateOpts{Name: options.CIDR, AdminStateUp: &up}
 	network, err := networks.Create(mgr.OpenStack.Network, opts).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating network")
 	}
 	return &api.Network{
 		ID:   network.ID,
-		Name: network.Name,
+		CIDR: network.Name,
 	}, nil
 }
 
@@ -57,7 +57,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 	for _, n := range l {
 		net := api.Network{
 			ID:   n.ID,
-			Name: n.Name,
+			CIDR: n.Name,
 		}
 		nets = append(nets, net)
 	}
@@ -72,7 +72,7 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
 	}
 	return &api.Network{
 		ID:   n.ID,
-		Name: n.Name,
+		CIDR: n.Name,
 	}, nil
 }
 

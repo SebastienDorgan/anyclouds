@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
@@ -22,14 +23,17 @@ func (mgr *KeyPairManager) Load(name string, publicKey []byte) error {
 }
 
 //List available keys
-func (mgr *KeyPairManager) List() ([]string, error) {
+func (mgr *KeyPairManager) List() ([]api.KeyPair, error) {
 	out, err := mgr.AWS.EC2Client.DescribeKeyPairs(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing key pair")
 	}
-	result := []string{}
+	result := []api.KeyPair{}
 	for _, kp := range out.KeyPairs {
-		result = append(result, *kp.KeyName)
+		result = append(result, api.KeyPair{
+			Name:        *kp.KeyName,
+			Fingerprint: *kp.KeyFingerprint,
+		})
 	}
 	return result, nil
 }

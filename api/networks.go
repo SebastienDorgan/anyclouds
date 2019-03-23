@@ -5,13 +5,13 @@ type Network struct {
 	//unique identifier of the network
 	ID string
 	//name of the network
-	Name string
+	CIDR string
 }
 
 //NetworkOptions defines options to use when creating a network
 type NetworkOptions struct {
 	//name of the network
-	Name string
+	CIDR string
 }
 
 //IPVersion ip version enum
@@ -22,6 +22,8 @@ const (
 	IPVersion6 IPVersion = 6
 	//IPVersion4 IPv4
 	IPVersion4 IPVersion = 4
+	//IPVersion4And6 IPv4 and IPv6
+	IPVersion4And6 IPVersion = 10
 )
 
 //SubnetOptions defines options to use when creating a sub network

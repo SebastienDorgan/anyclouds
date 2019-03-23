@@ -16,6 +16,12 @@ const (
 	ArchUnknown CPUArch = "UNKNOWN"
 )
 
+//GPU defines a GPU
+type GPU struct {
+	Number int
+	Type   string
+}
+
 //ServerTemplate defines instace template type
 type ServerTemplate struct {
 	ID              string
@@ -29,6 +35,8 @@ type ServerTemplate struct {
 	EphemeralDiskSize int
 	CreatedAt         time.Time
 	Arch              CPUArch
+	CPUSpeed          float32
+	GPU               *GPU
 }
 
 //ServerTemplateManager defines Server template management functions a anyclouds provider must provide
