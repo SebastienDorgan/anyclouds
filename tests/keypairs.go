@@ -1,11 +1,8 @@
 package tests
 
 import (
-	"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/hex"
 
 	"golang.org/x/crypto/ssh"
 
@@ -32,9 +29,6 @@ func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
 	publicKey := privateKey.PublicKey
 	pub, _ := ssh.NewPublicKey(&publicKey)
 	pubBytes := ssh.MarshalAuthorizedKey(pub)
-	hash := md5.New()
-	hash.Write(x509.MarshalPKCS1PrivateKey(privateKey))
-	finger := hex.EncodeToString(hash.Sum(nil))
 
 	err = s.Mgr.Load("pktest", pubBytes)
 	assert.NoError(s.T(), err)
@@ -44,16 +38,13 @@ func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
 	assert.Equal(s.T(), nkeys+1, len(keypairs))
 
 	found := false
-	ftest := ""
 	for _, kp := range keypairs {
 		if kp.Name == "pktest" {
 			found = true
-			ftest = kp.Fingerprint
 			break
 		}
 	}
 	assert.True(s.T(), found)
-	assert.Equal(s.T(), finger, ftest)
 
 	err = s.Mgr.Delete("pktest")
 	assert.NoError(s.T(), err)

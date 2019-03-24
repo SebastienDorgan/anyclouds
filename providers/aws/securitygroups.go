@@ -1,9 +1,11 @@
 package aws
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/gob"
 	"fmt"
-	"strconv"
-	"strings"
+	"net"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
@@ -24,49 +26,46 @@ func i64toi(i64 *int64) int {
 }
 
 func rid(r api.SecurityRule) string {
-	return fmt.Sprintf("%s/%s/%s/%d/%d", r.SecurityGroupID, r.Direction, r.Protocol, r.PortRange.From, r.PortRange.To)
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	enc.Encode(r)
+	return base64.StdEncoding.EncodeToString(buffer.Bytes())
 }
 
 func idr(s string) *api.SecurityRule {
-	tokens := strings.Split(s, "/")
-	from, err := strconv.ParseInt(tokens[3], 10, 32)
-	if err != nil {
-		from = 0
-	}
-	to, err := strconv.ParseInt(tokens[4], 10, 32)
-	if err != nil {
-		to = 0
-	}
-	return &api.SecurityRule{
-		SecurityGroupID: tokens[0],
-		Direction:       api.RuleDirection(tokens[1]),
-		Protocol:        api.Protocol(tokens[2]),
-		PortRange: api.PortRange{
-			From: int(from),
-			To:   int(to),
-		},
-	}
-
+	bin, _ := base64.StdEncoding.DecodeString(s)
+	buffer := bytes.NewBuffer(bin)
+	dec := gob.NewDecoder(buffer)
+	r := api.SecurityRule{}
+	dec.Decode(&r)
+	return &r
 }
 
 func group(g *ec2.SecurityGroup) *api.SecurityGroup {
 	rules := []api.SecurityRule{}
 	for _, pi := range g.IpPermissions {
+		if len(pi.IpRanges) == 0 {
+			continue
+		}
 		r := api.SecurityRule{
-			Direction: api.RuleDirectionIngress,
+			SecurityGroupID: *g.GroupId,
+			Direction:       api.RuleDirectionIngress,
 			PortRange: api.PortRange{
 				From: i64toi(pi.FromPort),
 				To:   i64toi(pi.ToPort),
 			},
-			Protocol: api.Protocol(*pi.IpProtocol),
+			Protocol:    api.Protocol(*pi.IpProtocol),
+			CIDR:        *pi.IpRanges[0].CidrIp,
+			Description: *pi.IpRanges[0].Description,
 		}
 		r.ID = rid(r)
 		rules = append(rules, r)
 	}
 	return &api.SecurityGroup{
-		ID:    *g.GroupId,
-		Name:  *g.GroupName,
-		Rules: rules,
+		ID:        *g.GroupId,
+		Name:      *g.GroupName,
+		NetworkID: *g.VpcId,
+		Rules:     rules,
 	}
 }
 
@@ -190,58 +189,140 @@ func (mgr *SecurityGroupManager) RemoveServer(id string, serverID string) error 
 	return nil
 }
 
+func isV6(CIDR string) (bool, error) {
+	if len(CIDR) == 0 {
+		return false, nil
+	}
+	_, n, e := net.ParseCIDR(CIDR)
+	if e != nil {
+		return false, e
+	}
+	if s, _ := n.Mask.Size(); s == 16 {
+		return true, nil
+	}
+	return false, nil
+
+}
+
+func ipRange(o *api.SecurityRuleOptions) *ec2.IpRange {
+	cidr := o.CIDR
+	if len(cidr) == 0 {
+		cidr = "0.0.0.0/0"
+	}
+	return &ec2.IpRange{
+		CidrIp:      &cidr,
+		Description: &o.Description,
+	}
+}
+
+func ipRangeFromRule(o *api.SecurityRule) *ec2.IpRange {
+	cidr := o.CIDR
+	if len(cidr) == 0 {
+		cidr = "0.0.0.0/0"
+	}
+	return &ec2.IpRange{
+		CidrIp:      &cidr,
+		Description: &o.Description,
+	}
+}
+
+func ipv6Range(o *api.SecurityRuleOptions) *ec2.Ipv6Range {
+	return &ec2.Ipv6Range{
+		CidrIpv6:    &o.CIDR,
+		Description: &o.Description,
+	}
+}
+
+func ipv6RangeFromRule(o *api.SecurityRule) *ec2.Ipv6Range {
+	return &ec2.Ipv6Range{
+		CidrIpv6:    &o.CIDR,
+		Description: &o.Description,
+	}
+}
+
+func ipPermission(options *api.SecurityRuleOptions) (*ec2.IpPermission, error) {
+	p := &ec2.IpPermission{
+		IpProtocol: aws.String(string(options.Protocol)),
+		FromPort:   aws.Int64(int64(options.PortRange.From)),
+		ToPort:     aws.Int64(int64(options.PortRange.To)),
+	}
+
+	v6, err := isV6(options.CIDR)
+	if err != nil {
+		return nil, err
+	}
+	if v6 {
+		p.Ipv6Ranges = []*ec2.Ipv6Range{
+			ipv6Range(options),
+		}
+	} else {
+		p.IpRanges = []*ec2.IpRange{
+			ipRange(options),
+		}
+	}
+
+	return p, nil
+}
+
+func ipPermissionFromRule(r *api.SecurityRule) (*ec2.IpPermission, error) {
+	p := &ec2.IpPermission{
+		IpProtocol: aws.String(string(r.Protocol)),
+		FromPort:   aws.Int64(int64(r.PortRange.From)),
+		ToPort:     aws.Int64(int64(r.PortRange.To)),
+	}
+
+	v6, err := isV6(r.CIDR)
+	if err != nil {
+		return nil, err
+	}
+	if v6 {
+		p.Ipv6Ranges = []*ec2.Ipv6Range{
+			ipv6RangeFromRule(r),
+		}
+	} else {
+		p.IpRanges = []*ec2.IpRange{
+			ipRangeFromRule(r),
+		}
+	}
+
+	return p, nil
+}
+
 //AddRule adds a security rule to an security group
-func (mgr *SecurityGroupManager) AddRule(id string, options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
-	out, err := mgr.AWS.EC2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-		GroupIds: []*string{
-			aws.String(id),
-		},
-	})
+func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
+	p, err := ipPermission(options)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error adding rule to security groups")
 	}
-	if len(out.SecurityGroups) == 0 {
-		return nil, errors.Wrap(fmt.Errorf("Security group with ID %s not found", id), "Error adding rule to security groups")
-	}
-	if len(out.SecurityGroups) > 1 {
-		return nil, errors.Wrap(fmt.Errorf("Multiple groups with ID %s not found", id), "Error adding rule to security groups")
-	}
-	group := out.SecurityGroups[0]
 
 	if options.Direction == api.RuleDirectionIngress {
-
-		inRules := append(group.IpPermissions, &ec2.IpPermission{
-			IpProtocol: aws.String(string(options.Protocol)),
-			FromPort:   aws.Int64(int64(options.PortRange.From)),
-			ToPort:     aws.Int64(int64(options.PortRange.To)),
-		})
-		_, err := mgr.AWS.EC2Client.UpdateSecurityGroupRuleDescriptionsIngress(&ec2.UpdateSecurityGroupRuleDescriptionsIngressInput{
-			GroupId:       &id,
-			IpPermissions: inRules,
+		_, err = mgr.AWS.EC2Client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
+			GroupId: &options.SecurityGroupID,
+			IpPermissions: []*ec2.IpPermission{
+				p,
+			},
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "Error adding rule to security group")
 		}
 
 	} else if options.Direction == api.RuleDirectionEgress {
-		inRules := append(group.IpPermissions, &ec2.IpPermission{
-			IpProtocol: aws.String(string(options.Protocol)),
-			FromPort:   aws.Int64(int64(options.PortRange.From)),
-			ToPort:     aws.Int64(int64(options.PortRange.To)),
-		})
-		_, err := mgr.AWS.EC2Client.UpdateSecurityGroupRuleDescriptionsEgress(&ec2.UpdateSecurityGroupRuleDescriptionsEgressInput{
-			GroupId:       &id,
-			IpPermissions: inRules,
+		_, err = mgr.AWS.EC2Client.AuthorizeSecurityGroupEgress(&ec2.AuthorizeSecurityGroupEgressInput{
+			GroupId: &options.SecurityGroupID,
+			IpPermissions: []*ec2.IpPermission{
+				p,
+			},
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "Error adding rule to security group")
 		}
 	}
 	rule := api.SecurityRule{
-		SecurityGroupID: id,
+		SecurityGroupID: options.SecurityGroupID,
 		Direction:       options.Direction,
 		PortRange:       options.PortRange,
 		Protocol:        options.Protocol,
+		Description:     options.Description,
 	}
 	rule.ID = rid(rule)
 	return &rule, nil
@@ -250,15 +331,15 @@ func (mgr *SecurityGroupManager) AddRule(id string, options *api.SecurityRuleOpt
 //DeleteRule deletes a secuity rule from an security group
 func (mgr *SecurityGroupManager) DeleteRule(ruleID string) error {
 	rule := idr(ruleID)
+	ipPerm, err := ipPermissionFromRule(rule)
+	if err != nil {
+		return errors.Wrap(err, "Error deleting rule from security group")
+	}
 	if rule.Direction == api.RuleDirectionIngress {
 		_, err := mgr.AWS.EC2Client.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
 			GroupId: &rule.SecurityGroupID,
 			IpPermissions: []*ec2.IpPermission{
-				&ec2.IpPermission{
-					IpProtocol: aws.String(string(rule.Protocol)),
-					FromPort:   aws.Int64(int64(rule.PortRange.From)),
-					ToPort:     aws.Int64(int64(rule.PortRange.To)),
-				},
+				ipPerm,
 			},
 		})
 		if err != nil {
@@ -269,11 +350,7 @@ func (mgr *SecurityGroupManager) DeleteRule(ruleID string) error {
 		_, err := mgr.AWS.EC2Client.RevokeSecurityGroupEgress(&ec2.RevokeSecurityGroupEgressInput{
 			GroupId: &rule.SecurityGroupID,
 			IpPermissions: []*ec2.IpPermission{
-				&ec2.IpPermission{
-					IpProtocol: aws.String(string(rule.Protocol)),
-					FromPort:   aws.Int64(int64(rule.PortRange.From)),
-					ToPort:     aws.Int64(int64(rule.PortRange.To)),
-				},
+				ipPerm,
 			},
 		})
 		if err != nil {

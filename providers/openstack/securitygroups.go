@@ -192,9 +192,9 @@ func (sec *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGr
 }
 
 //AddRule adds a security rule to an OpenStack security group
-func (sec *SecurityGroupManager) AddRule(id string, options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
+func (sec *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
 	opts := ruleOptions(options)
-	opts.SecGroupID = id
+	opts.SecGroupID = options.SecurityGroupID
 	r, err := rules.Create(sec.OpenStack.Network, opts).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error adding security rule")

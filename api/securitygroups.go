@@ -46,15 +46,18 @@ type SecurityRule struct {
 	Direction       RuleDirection
 	PortRange       PortRange
 	Protocol        Protocol
+	CIDR            string
 	Description     string
 }
 
 //SecurityRuleOptions define security rule options when adding rule to a security group
 type SecurityRuleOptions struct {
-	Direction   RuleDirection
-	PortRange   PortRange
-	Protocol    Protocol
-	Description string
+	SecurityGroupID string
+	Direction       RuleDirection
+	PortRange       PortRange
+	Protocol        Protocol
+	CIDR            string
+	Description     string
 }
 
 //SecurityGroup defines security groups properties
@@ -92,7 +95,7 @@ type SecurityGroupManager interface {
 	//ListByServer list security groups by server
 	ListByServer(serverID string) ([]SecurityGroup, error)
 	//Add a rule to a security group
-	AddRule(id string, rule *SecurityRuleOptions) (*SecurityRule, error)
+	AddRule(options *SecurityRuleOptions) (*SecurityRule, error)
 	//Delete a rule
 	DeleteRule(ruleID string) error
 }

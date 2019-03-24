@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"reflect"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
@@ -20,7 +22,7 @@ func (s *SecurityGroupManagerTestSuite) TestSecurityGroupManager() {
 		CIDR: "10.0.0.0/16",
 	})
 	assert.NoError(s.T(), err)
-
+	defer s.Prov.GetNetworkManager().DeleteNetwork(n.ID)
 	Mgr := s.Prov.GetSecurityGroupManager()
 	sgl, err := Mgr.List()
 	assert.NoError(s.T(), err)
@@ -32,16 +34,44 @@ func (s *SecurityGroupManagerTestSuite) TestSecurityGroupManager() {
 		NetworkID:   n.ID,
 	})
 
-	Mgr.AddRule(sg.ID, api.SecurityRuleOptions{
-		Description: "rule",
-		Direction:   api.RuleDirectionIngress,
+	_, err = Mgr.AddRule(&api.SecurityRuleOptions{
+		SecurityGroupID: sg.ID,
+		Description:     "rule",
+		Direction:       api.RuleDirectionIngress,
+		PortRange: api.PortRange{
+			From: 0,
+			To:   10000,
+		},
+		Protocol: api.ProtocolTCP,
+		//CIDR:     "0.0.0.0/0",
 	})
 	assert.NoError(s.T(), err)
 	sgl, err = Mgr.List()
 	assert.Equal(s.T(), l0+1, len(sgl))
 
-	Mgr.Delete(sg.ID)
+	sg, err = Mgr.Get(sg.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 1, len(sg.Rules))
+	if len(sg.Rules) == 0 {
+		assert.FailNow(s.T(), "No rule added")
+	}
+	r := sg.Rules[0]
+
+	assert.Equal(s.T(), r.Description, "rule")
+	assert.Equal(s.T(), r.Direction, api.RuleDirectionIngress)
+	assert.Equal(s.T(), r.Protocol, api.ProtocolTCP)
+	assert.True(s.T(), reflect.DeepEqual(r.PortRange, api.PortRange{
+		From: 0,
+		To:   10000,
+	}))
+
+	err = Mgr.DeleteRule(r.ID)
+	sg, err = Mgr.Get(sg.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 0, len(sg.Rules))
+	err = Mgr.Delete(sg.ID)
 	assert.NoError(s.T(), err)
 	sgl, err = Mgr.List()
 	assert.Equal(s.T(), l0, len(sgl))
+
 }
