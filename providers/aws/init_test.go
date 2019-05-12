@@ -9,14 +9,14 @@ import (
 	"github.com/SebastienDorgan/anyclouds/providers/aws"
 )
 
-func GetProvider() api.Provider {
-	user, _ := user.Current()
-	path := filepath.Join(user.HomeDir, ".anyclouds/aws_test.json")
+func GetProvider() (api.Provider, error) {
+	usr, _ := user.Current()
+	path := filepath.Join(usr.HomeDir, ".anyclouds/aws_test.json")
 	file, err := os.Open(path)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	provider := &aws.Provider{}
-	provider.Init(file, "json")
-	return provider
+	err = provider.Init(file, "json")
+	return provider, err
 }

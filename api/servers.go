@@ -23,8 +23,8 @@ const (
 	ServerInError ServerState = "ERROR"
 	//ServerTransientState State of an Server in transient state
 	ServerTransientState ServerState = "TRANSIENT"
-	//ServerUnknwonState State of an Server in error
-	ServerUnknwonState ServerState = "UNKNOWN"
+	//ServerUnknownState State of an Server in error
+	ServerUnknownState ServerState = "UNKNOWN"
 )
 
 //Server defines Server properties
@@ -40,8 +40,21 @@ type Server struct {
 	State          ServerState
 	CreatedAt      time.Time
 	KeyPairName    string
-	Spot           bool
+	LeasingType    LeasingType
+	LeaseDuration  time.Duration
 }
+
+//LeasingType type of leasing
+type LeasingType int
+
+const (
+	//LeasingTypeOnDemand to lease on demand server instance
+	LeasingTypeOnDemand LeasingType = 0
+	//LeasingTypeSpot to lease on demand spot instance
+	LeasingTypeSpot LeasingType = 1
+	//LeasingTypeReserved to lease reserved instance
+	LeasingTypeReserved LeasingType = 2
+)
 
 //CreateServerOptions defines options to use when creating an Server
 type CreateServerOptions struct {
@@ -53,8 +66,8 @@ type CreateServerOptions struct {
 	PublicIP        bool
 	BootstrapScript io.Reader
 	KeyPairName     string
-	Spot            bool
-	BookinDuration  time.Duration
+	LeasingType     LeasingType
+	LeaseDuration   time.Duration
 }
 
 //ServerManager defines Server management functions an anyclouds provider must provide

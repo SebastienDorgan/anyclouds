@@ -29,14 +29,14 @@ type HardwareResources struct {
 	GPUCoreFrequency float64
 }
 
-//Resource a resource is qulified by an indentifier, a name, and a creation date.
+//Resource a resource is qualified by an identifier, a name, and a creation date.
 type Resource struct {
 	ID           string
 	Name         string
 	CreationDate time.Time
 }
 
-//Server popoerties of a server
+//Server properties of a server
 type Server struct {
 	Resource
 	HardwareResources

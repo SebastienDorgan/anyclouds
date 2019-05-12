@@ -13,7 +13,8 @@ type AWSKeyPairManagerTestSuite struct {
 
 //SetupSuite set up image manager
 func (suite *AWSKeyPairManagerTestSuite) SetupSuite() {
-	suite.Mgr = GetProvider().GetKeyPairManager()
+	p, _ := GetProvider()
+	suite.Mgr = p.GetKeyPairManager()
 }
 
 func TestAWSKeyPairManagerTestSuite(t *testing.T) {

@@ -25,18 +25,18 @@ func group(g *groups.SecGroup) *api.SecurityGroup {
 	}
 }
 
-func chechGroupName(name string) error {
+func checkGroupName(name string) error {
 	if strings.Contains(name, "/") {
-		return fmt.Errorf("Invalid '/' character in group name '%s'", name)
+		return fmt.Errorf("invalid '/' character in group name '%s'", name)
 	}
 	return nil
 }
 
 //Create creates an openstack security group
 func (sec *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
-	err := chechGroupName(options.Name)
+	err := checkGroupName(options.Name)
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error creating security group")
+		return nil, errors.Wrap(ProviderError(err), "error creating security group")
 	}
 	createOpts := groups.CreateOpts{
 		Name:        fmt.Sprintf("%s/%s", options.NetworkID, options.Name),
@@ -45,7 +45,7 @@ func (sec *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 
 	g, err := groups.Create(sec.OpenStack.Network, createOpts).Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error creating security group")
+		return nil, errors.Wrap(ProviderError(err), "error creating security group")
 	}
 	return group(g), nil
 
@@ -55,7 +55,7 @@ func (sec *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 func (sec *SecurityGroupManager) Delete(id string) error {
 	err := groups.Delete(sec.OpenStack.Network, id).ExtractErr()
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error listing security group")
+		return errors.Wrap(ProviderError(err), "error listing security group")
 	}
 	return nil
 }
@@ -63,14 +63,14 @@ func (sec *SecurityGroupManager) Delete(id string) error {
 func (sec *SecurityGroupManager) list(opts groups.ListOpts) ([]api.SecurityGroup, error) {
 	allPages, err := groups.List(sec.OpenStack.Network, opts).AllPages()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing security group")
+		return nil, errors.Wrap(ProviderError(err), "error listing security group")
 	}
 
 	allGroups, err := groups.ExtractGroups(allPages)
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing security group")
+		return nil, errors.Wrap(ProviderError(err), "error listing security group")
 	}
-	result := []api.SecurityGroup{}
+	var result []api.SecurityGroup
 	for _, g := range allGroups {
 		group, err := sec.get(g.ID, false)
 		if err != nil {
@@ -118,16 +118,16 @@ func (sec *SecurityGroupManager) get(id string, withRules bool) (*api.SecurityGr
 		ID: id,
 	}
 
-	groups, err := sec.list(listOpts)
+	securityGroups, err := sec.list(listOpts)
 	if err != nil {
 		return nil, err
 	}
-	if len(groups) == 0 {
+	if len(securityGroups) == 0 {
 		return nil, fmt.Errorf("Error getting  security group: group does not exists")
-	} else if len(groups) > 1 {
+	} else if len(securityGroups) > 1 {
 		return nil, fmt.Errorf("Error getting  security group: Provider error: multiple security groups exists with the same identifier")
 	}
-	group := &groups[0]
+	group := &securityGroups[0]
 
 	if !withRules {
 		return group, nil
@@ -145,11 +145,11 @@ func (sec *SecurityGroupManager) get(id string, withRules bool) (*api.SecurityGr
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error getting  security group")
 	}
-	rules := []api.SecurityRule{}
+	var securityRules []api.SecurityRule
 	for _, r := range allRules {
-		rules = append(rules, *rule(&r))
+		securityRules = append(securityRules, *rule(&r))
 	}
-	group.Rules = rules
+	group.Rules = securityRules
 	return group, nil
 }
 
@@ -176,12 +176,12 @@ func (sec *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGr
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing security group by server")
 	}
-	groups, err := secgroups.ExtractSecurityGroups(page)
+	securityGroups, err := secgroups.ExtractSecurityGroups(page)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing security group by server")
 	}
-	result := []api.SecurityGroup{}
-	for _, g := range groups {
+	var result []api.SecurityGroup
+	for _, g := range securityGroups {
 		group := api.SecurityGroup{
 			ID:   g.ID,
 			Name: g.Name,
@@ -202,7 +202,7 @@ func (sec *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 	return rule(r), nil
 }
 
-//DeleteRule deletes a secuity rule from an OpenStack security group
+//DeleteRule deletes a security rule from an OpenStack security group
 func (sec *SecurityGroupManager) DeleteRule(ruleID string) error {
 	err := rules.Delete(sec.OpenStack.Network, ruleID).ExtractErr()
 	return errors.Wrap(ProviderError(err), "Error deleting security rule")

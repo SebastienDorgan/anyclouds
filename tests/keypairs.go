@@ -19,11 +19,11 @@ type KeyPairManagerTestSuite struct {
 
 //TestKeyPairManager Canonical test for KeyPairManager implementation
 func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
-	s.Mgr.Delete("pktest")
+	_ = s.Mgr.Delete("pktest")
 
 	keypairs, err := s.Mgr.List()
 	assert.NoError(s.T(), err)
-	nkeys := len(keypairs)
+	keysLen := len(keypairs)
 
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	publicKey := privateKey.PublicKey
@@ -35,7 +35,7 @@ func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
 
 	keypairs, err = s.Mgr.List()
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), nkeys+1, len(keypairs))
+	assert.Equal(s.T(), keysLen+1, len(keypairs))
 
 	found := false
 	for _, kp := range keypairs {
@@ -51,7 +51,7 @@ func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
 
 	keypairs, err = s.Mgr.List()
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), nkeys, len(keypairs))
+	assert.Equal(s.T(), keysLen, len(keypairs))
 
 	found = false
 	for _, kp := range keypairs {

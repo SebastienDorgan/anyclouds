@@ -13,7 +13,7 @@ type AWSSecurityGroupManagerTestSuite struct {
 
 //SetupSuite set up image manager
 func (suite *AWSSecurityGroupManagerTestSuite) SetupSuite() {
-	suite.Prov = GetProvider()
+	suite.Prov, _ = GetProvider()
 }
 
 func TestAWSSecurityGroupManagerTestSuite(t *testing.T) {

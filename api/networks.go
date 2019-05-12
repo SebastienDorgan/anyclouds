@@ -40,7 +40,7 @@ type SubnetOptions struct {
 
 //Subnet defines sub network properties
 type Subnet struct {
-	//unnique identifier of the sub network
+	//unique identifier of the sub network
 	ID string
 	//identifier of the parent network (i.e. Network.ID)
 	NetworkID string

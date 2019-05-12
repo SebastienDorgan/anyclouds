@@ -13,12 +13,13 @@ import (
 
 //TestCreate create AWS provider
 func TestCreate(t *testing.T) {
-	var provider aws.Provider = aws.Provider{}
-	user, _ := user.Current()
-	path := filepath.Join(user.HomeDir, ".anyclouds/aws_test.json")
+	var provider aws.Provider
+	usr, _ := user.Current()
+	path := filepath.Join(usr.HomeDir, ".anyclouds/aws_test.json")
 	file, err := os.Open(path)
 	assert.NoError(t, err)
-	provider.Init(file, "json")
+	err = provider.Init(file, "json")
+	assert.NoError(t, err)
 	images, err := provider.GetImageManager().List()
 	assert.NoError(t, err)
 	for _, img := range images {

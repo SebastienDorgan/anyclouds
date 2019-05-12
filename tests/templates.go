@@ -17,10 +17,10 @@ type TemplateManagerTestSuite struct {
 //TestServerTemplateManager Canonical test for ServerTemplateManager implementation
 func (s *TemplateManagerTestSuite) TestServerTemplateManager() {
 	mgr := s.Mgr
-	tpls, err := mgr.List()
+	templates, err := mgr.List()
 	assert.NoError(s.T(), err)
-	assert.True(s.T(), len(tpls) > 0)
-	for _, tpl := range tpls {
+	assert.True(s.T(), len(templates) > 0)
+	for _, tpl := range templates {
 		tp, err := mgr.Get(tpl.ID)
 		assert.NoError(s.T(), err)
 		assert.True(s.T(), reflect.DeepEqual(tpl, *tp))

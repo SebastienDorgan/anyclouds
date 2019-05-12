@@ -18,7 +18,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 		return nil, errors.Wrap(ProviderError(err), "Error listing templates")
 	}
 	l, err := flavors.ExtractFlavors(page)
-	tpls := []api.ServerTemplate{}
+	var templates []api.ServerTemplate
 
 	for _, f := range l {
 		t := api.ServerTemplate{
@@ -30,9 +30,9 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 			EphemeralDiskSize: f.Ephemeral,
 			Arch:              api.ArchUnknown,
 		}
-		tpls = append(tpls, t)
+		templates = append(templates, t)
 	}
-	return tpls, nil
+	return templates, nil
 }
 
 //Get returns the template identified by ids

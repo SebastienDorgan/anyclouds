@@ -28,7 +28,7 @@ func i64toi(i64 *int64) int {
 func rid(r api.SecurityRule) string {
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	enc.Encode(r)
+	_ = enc.Encode(r)
 	return base64.StdEncoding.EncodeToString(buffer.Bytes())
 }
 
@@ -37,12 +37,12 @@ func idr(s string) *api.SecurityRule {
 	buffer := bytes.NewBuffer(bin)
 	dec := gob.NewDecoder(buffer)
 	r := api.SecurityRule{}
-	dec.Decode(&r)
+	_ = dec.Decode(&r)
 	return &r
 }
 
 func group(g *ec2.SecurityGroup) *api.SecurityGroup {
-	rules := []api.SecurityRule{}
+	var rules []api.SecurityRule
 	for _, pi := range g.IpPermissions {
 		if len(pi.IpRanges) == 0 {
 			continue
@@ -94,17 +94,21 @@ func (mgr *SecurityGroupManager) Delete(id string) error {
 	return errors.Wrap(err, "Error deleting security groups")
 }
 
+func groups(in []*ec2.SecurityGroup) []api.SecurityGroup {
+	var result []api.SecurityGroup
+	for _, g := range in {
+		result = append(result, *group(g))
+	}
+	return result
+}
+
 //List list all security groups defined in the tenant
 func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
 	out, err := mgr.AWS.EC2Client.DescribeSecurityGroups(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing security groups")
 	}
-	result := []api.SecurityGroup{}
-	for _, g := range out.SecurityGroups {
-		result = append(result, *group(g))
-	}
-	return result, nil
+	return groups(out.SecurityGroups), nil
 }
 
 //ListByServer list security groups by server
@@ -115,7 +119,7 @@ func (mgr *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGr
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing security groups of server")
 	}
-	result := []api.SecurityGroup{}
+	var result []api.SecurityGroup
 	for _, g := range out.Groups {
 		group, err := mgr.Get(*g.GroupId)
 		if err != nil {
@@ -134,13 +138,13 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing security groups")
+		return nil, errors.Wrap(err, "error listing security groups")
 	}
 	if len(out.SecurityGroups) == 0 {
-		return nil, errors.Wrap(fmt.Errorf("Security group with ID %s not found", id), "Error listing security groups")
+		return nil, errors.Wrap(fmt.Errorf("security group with ID %s not found", id), "error listing security groups")
 	}
 	if len(out.SecurityGroups) > 1 {
-		return nil, errors.Wrap(fmt.Errorf("Multiple groups with ID %s not found", id), "Error listing security groups")
+		return nil, errors.Wrap(fmt.Errorf("multiple groups with ID %s not found", id), "error listing security groups")
 	}
 	return group(out.SecurityGroups[0]), nil
 }
@@ -149,9 +153,9 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 func (mgr *SecurityGroupManager) AddServer(id string, serverID string) error {
 	groups, err := mgr.ListByServer(serverID)
 	if err != nil {
-		return errors.Wrap(err, "Error adding security groups to server")
+		return errors.Wrap(err, "error adding security groups to server")
 	}
-	groupIds := []*string{}
+	var groupIds []*string
 	for _, g := range groups {
 		groupIds = append(groupIds, &g.ID)
 	}
@@ -162,7 +166,7 @@ func (mgr *SecurityGroupManager) AddServer(id string, serverID string) error {
 		Groups:     groupIds,
 	})
 	if err != nil {
-		return errors.Wrap(err, "Error adding security groups to server")
+		return errors.Wrap(err, "error adding security groups to server")
 	}
 	return nil
 }
@@ -171,9 +175,9 @@ func (mgr *SecurityGroupManager) AddServer(id string, serverID string) error {
 func (mgr *SecurityGroupManager) RemoveServer(id string, serverID string) error {
 	groups, err := mgr.ListByServer(serverID)
 	if err != nil {
-		return errors.Wrap(err, "Error removing security groups from server")
+		return errors.Wrap(err, "error removing security groups from server")
 	}
-	groupIds := []*string{}
+	var groupIds []*string
 	for _, g := range groups {
 		if serverID != g.ID {
 			groupIds = append(groupIds, &g.ID)
@@ -184,7 +188,7 @@ func (mgr *SecurityGroupManager) RemoveServer(id string, serverID string) error 
 		Groups:     groupIds,
 	})
 	if err != nil {
-		return errors.Wrap(err, "Error removing security groups from server")
+		return errors.Wrap(err, "error removing security groups from server")
 	}
 	return nil
 }
@@ -292,7 +296,7 @@ func ipPermissionFromRule(r *api.SecurityRule) (*ec2.IpPermission, error) {
 func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
 	p, err := ipPermission(options)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error adding rule to security groups")
+		return nil, errors.Wrap(err, "error adding rule to security groups")
 	}
 
 	if options.Direction == api.RuleDirectionIngress {
@@ -303,7 +307,7 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "Error adding rule to security group")
+			return nil, errors.Wrap(err, "error adding rule to security group")
 		}
 
 	} else if options.Direction == api.RuleDirectionEgress {
@@ -314,7 +318,7 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "Error adding rule to security group")
+			return nil, errors.Wrap(err, "error adding rule to security group")
 		}
 	}
 	rule := api.SecurityRule{
@@ -328,12 +332,12 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 	return &rule, nil
 }
 
-//DeleteRule deletes a secuity rule from an security group
+//DeleteRule deletes a security rule from an security group
 func (mgr *SecurityGroupManager) DeleteRule(ruleID string) error {
 	rule := idr(ruleID)
 	ipPerm, err := ipPermissionFromRule(rule)
 	if err != nil {
-		return errors.Wrap(err, "Error deleting rule from security group")
+		return errors.Wrap(err, "error deleting rule from security group")
 	}
 	if rule.Direction == api.RuleDirectionIngress {
 		_, err := mgr.AWS.EC2Client.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
@@ -343,7 +347,7 @@ func (mgr *SecurityGroupManager) DeleteRule(ruleID string) error {
 			},
 		})
 		if err != nil {
-			return errors.Wrap(err, "Error deleting rule from security group")
+			return errors.Wrap(err, "error deleting rule from security group")
 		}
 	}
 	if rule.Direction == api.RuleDirectionEgress {
@@ -354,7 +358,7 @@ func (mgr *SecurityGroupManager) DeleteRule(ruleID string) error {
 			},
 		})
 		if err != nil {
-			return errors.Wrap(err, "Error deleting rule from security group")
+			return errors.Wrap(err, "error deleting rule from security group")
 		}
 	}
 	return nil

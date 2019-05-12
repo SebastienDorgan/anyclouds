@@ -28,7 +28,7 @@ func (mgr *KeyPairManager) List() ([]api.KeyPair, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing key pair")
 	}
-	result := []api.KeyPair{}
+	var result []api.KeyPair
 	for _, kp := range out.KeyPairs {
 		result = append(result, api.KeyPair{
 			Name:        *kp.KeyName,

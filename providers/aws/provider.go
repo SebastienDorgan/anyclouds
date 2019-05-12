@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/opsworks"
 	"github.com/aws/aws-sdk-go/service/pricing"
 
 	"github.com/pkg/errors"
@@ -31,16 +32,16 @@ type Config struct {
 	ProviderName string
 }
 
-//Retrieve adapts Config to AWS Providder interface
+//Retrieve adapts Config to AWS Provider interface
 func (cfg *Config) Retrieve() (credentials.Value, error) {
 	return credentials.Value{
 		AccessKeyID:     cfg.AccessKeyID,
 		SecretAccessKey: cfg.SecretAccessKey,
-		ProviderName:    "anycloud",
+		ProviderName:    "anyclouds",
 	}, nil
 }
 
-//IsExpired adapts Config to AWS Providder interface
+//IsExpired adapts Config to AWS Provider interface
 func (cfg *Config) IsExpired() bool {
 	return false
 }
@@ -48,6 +49,7 @@ func (cfg *Config) IsExpired() bool {
 //Provider AWS provider
 type Provider struct {
 	EC2Client            *ec2.EC2
+	OpsWorksClient       *opsworks.OpsWorks
 	PricingClient        *pricing.Pricing
 	KeyPairManager       *KeyPairManager
 	ImagesManager        *ImageManager
@@ -56,6 +58,7 @@ type Provider struct {
 	ServerManager        *ServerManager
 	SecurityGroupManager *SecurityGroupManager
 	VolumeManager        *VolumeManager
+	Region               string
 }
 
 func getEC2Config(cfg *Config) *aws.Config {
@@ -90,6 +93,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 		return errors.Wrap(err, "Error creation provider session")
 	}
 	p.EC2Client = ec2.New(ec2session)
+	p.OpsWorksClient = opsworks.New(ec2session)
 
 	pricingSession, err := session.NewSession(getPricingConfig(&cfg))
 	if err != nil {
@@ -103,7 +107,9 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.VolumeManager = &VolumeManager{AWS: p}
 	p.SecurityGroupManager = &SecurityGroupManager{AWS: p}
 	p.KeyPairManager = &KeyPairManager{AWS: p}
+	p.Region = cfg.Region
 	return nil
+
 }
 
 //Name name of the provider
@@ -126,7 +132,7 @@ func (p *Provider) GetImageManager() api.ImageManager {
 	return p.ImagesManager
 }
 
-//GetTemplateManager returns aws IntanceTemplateManager
+//GetTemplateManager returns aws ServerTemplateManager
 func (p *Provider) GetTemplateManager() api.ServerTemplateManager {
 	return p.TemplateManager
 }

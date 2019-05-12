@@ -33,7 +33,7 @@ func (mgr *KeyPairManager) List() ([]api.KeyPair, error) {
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing images")
 	}
-	result := []api.KeyPair{}
+	var result []api.KeyPair
 	for _, kp := range kps {
 		result = append(result, api.KeyPair{
 			Name:        kp.Name,

@@ -19,6 +19,7 @@ type ImageManagerTestSuite struct {
 func (s *ImageManagerTestSuite) TestImageManager() {
 	images, err := s.Mgr.List()
 	assert.NoError(s.T(), err)
+	assert.NotEmpty(s.T(), images)
 	for _, img := range images {
 		image, err := s.Mgr.Get(img.ID)
 		assert.NoError(s.T(), err)

@@ -3,6 +3,7 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -20,8 +21,8 @@ type ServerTemplateManager struct {
 }
 
 func toFloat32(s string) float32 {
-	fstr := strings.Replace(s, ",", "", -1)
-	tmp, _ := strconv.ParseFloat(fstr, 32)
+	strFloat := strings.Replace(s, ",", "", -1)
+	tmp, _ := strconv.ParseFloat(strFloat, 32)
 	return float32(tmp)
 }
 
@@ -58,13 +59,61 @@ func decodeStorage(st string) int {
 	return nd * size
 }
 
+type Price struct {
+	value float32
+	date  time.Time
+}
+
+type PriceList []Price
+
+// Forward request for length
+func (p PriceList) Len() int {
+	return len(p)
+}
+
+// Define compare
+func (p PriceList) Less(i, j int) bool {
+	return p[i].date.Before(p[j].date)
+}
+
+// Define swap over an array
+func (p PriceList) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func readPrice(js []byte) float32 {
+	m := gjson.GetBytes(js, "terms.OnDemand").Map()
+
+	plist := PriceList{}
+	for _, res := range m {
+		mp := res.Map()
+		t, _ := time.Parse(time.RFC3339, mp["effectiveDate"].String())
+		dim := mp["priceDimensions"]
+		var value float32
+		for _, res2 := range dim.Map() {
+			value = float32(res2.Get("pricePerUnit.USD").Float())
+		}
+		p := Price{
+			date:  t,
+			value: value,
+		}
+		plist = append(plist, p)
+	}
+	if len(plist) == 0 {
+		return float32(0)
+	}
+	sort.Sort(plist)
+	return plist[0].value
+}
+
 func toTemplate(price aws.JSONValue) *api.ServerTemplate {
 	js, err := json.Marshal(price)
+
 	if err != nil {
 		return nil
 	}
 	creationDate, _ := time.Parse(time.RFC3339, gjson.GetBytes(js, "publicationDate").String())
-	return &api.ServerTemplate{
+	tpl := &api.ServerTemplate{
 		ID:                gjson.GetBytes(js, "product.sku").String(),
 		Name:              gjson.GetBytes(js, "product.attributes.instanceType").String(),
 		NumberOfCPUCore:   int(gjson.GetBytes(js, "product.attributes.vcpu").Int()),
@@ -73,7 +122,9 @@ func toTemplate(price aws.JSONValue) *api.ServerTemplate {
 		EphemeralDiskSize: decodeStorage(gjson.GetBytes(js, "product.attributes.storage").String()),
 		CPUSpeed:          decodeClockSpeed(gjson.GetBytes(js, "product.attributes.clockSpeed").String()),
 		CreatedAt:         creationDate,
+		OneDemandPrice:    readPrice(js),
 	}
+	return tpl
 }
 
 //List returns available VM templates
@@ -108,7 +159,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing server templates")
 	}
-	result := []api.ServerTemplate{}
+	var result []api.ServerTemplate
 	for _, price := range out.PriceList {
 		tpl := toTemplate(price)
 		if tpl.RAMSize == 0 {
@@ -155,7 +206,7 @@ func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
 		ServiceCode:   aws.String("AmazonEC2"),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing server templates")
+		return nil, errors.Wrap(err, "error listing server templates")
 	}
 
 	for _, price := range out.PriceList {
@@ -165,5 +216,5 @@ func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
 		}
 
 	}
-	return nil, fmt.Errorf("Error getting Server Template: Server template %s not found", id)
+	return nil, fmt.Errorf("error getting Server Template: Server template %s not found", id)
 }

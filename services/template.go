@@ -9,7 +9,7 @@ import (
 
 func fakeExtra(srv *api.ServerTemplate) *TemplateSelector {
 	return &TemplateSelector{
-		CPUArch:           api.ArchX86_64,
+		CPUArch:           api.ArchX8664,
 		NumberOfCPUCore:   srv.NumberOfCPUCore,
 		CPUCoreFrequency:  0.0,
 		RAMSize:           srv.RAMSize,
@@ -161,7 +161,7 @@ func (res *results) Less(i, j int) bool {
 
 //SearchTemplates finds template matching filter
 func (sv *ProviderService) SearchTemplates(tpls []api.ServerTemplate, filter *TemplateSelector) ([]TemplateResult, error) {
-	res := []TemplateResult{}
+	var res []TemplateResult
 	for _, tpl := range tpls {
 		var ext *TemplateSelector
 		if tmp, ok := sv.extra[tpl.Name]; ok {
@@ -187,9 +187,9 @@ func (sv *ProviderService) SearchTemplates(tpls []api.ServerTemplate, filter *Te
 }
 
 //SortTemplateResultList sort template results in ascending order using scorer
-func SortTemplateResultList(tpls []TemplateResult, scorer Scorer) {
+func SortTemplateResultList(templates []TemplateResult, scorer Scorer) {
 	results := results{
-		results: tpls,
+		results: templates,
 		scorer:  &scorer,
 	}
 	sort.Sort(&results)

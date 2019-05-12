@@ -87,7 +87,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	}
 	fip, err := floatingips.Create(mgr.OpenStack.Compute, &floatingips.CreateOpts{}).Extract()
 	if err != nil {
-		mgr.Delete(srv.ID)
+		_ = mgr.Delete(srv.ID)
 		return nil, errors.Wrap(err, "Error creating server")
 	}
 	err = floatingips.AssociateInstance(mgr.OpenStack.Compute, srv.ID, &floatingips.AssociateOpts{
@@ -141,23 +141,23 @@ func state(status string) api.ServerState {
 	case "ERROR":
 		return api.ServerInError
 	case "SHELVED":
-		return api.ServerUnknwonState
+		return api.ServerUnknownState
 	case "SHELVED_OFFLOADED":
-		return api.ServerUnknwonState
+		return api.ServerUnknownState
 	case "PAUSED":
 		return api.ServerPaused
 	case "SHUTOFF":
 		return api.ServerShutoff
 	case "UNKNOWN":
-		return api.ServerUnknwonState
+		return api.ServerUnknownState
 	default:
 		return api.ServerTransientState
 	}
 
 }
 
-// convertAdresses converts adresses returned by the OpenStack driver arrange them by version in a map
-func adresses(addresses map[string]interface{}) map[api.IPVersion][]string {
+// convertAddresses converts addresses returned by the OpenStack driver arrange them by version in a map
+func addresses(addresses map[string]interface{}) map[api.IPVersion][]string {
 	addrs := make(map[api.IPVersion][]string)
 	for _, obj := range addresses {
 		for _, networkAddresses := range obj.([]interface{}) {
@@ -195,7 +195,7 @@ func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 		State:          state(srv.Status),
 		PublicIPv4:     srv.AccessIPv4,
 		PublicIPv6:     srv.AccessIPv6,
-		PrivateIPs:     adresses(srv.Addresses),
+		PrivateIPs:     addresses(srv.Addresses),
 		Name:           srv.Name,
 		CreatedAt:      srv.Created,
 		KeyPairName:    srv.KeyName,
@@ -214,7 +214,7 @@ func (mgr *ServerManager) List() ([]api.Server, error) {
 		return nil, errors.Wrap(ProviderError(err), "Error listing servers")
 	}
 
-	res := []api.Server{}
+	var res []api.Server
 	for _, srv := range l {
 
 		res = append(res, *mgr.server(&srv))
@@ -237,7 +237,7 @@ func (mgr *ServerManager) Start(id string) error {
 //Stop stops an Server
 func (mgr *ServerManager) Stop(id string) error {
 	err := startstop.Stop(mgr.OpenStack.Compute, id).ExtractErr()
-	return errors.Wrap(ProviderError(err), "Error stoping server")
+	return errors.Wrap(ProviderError(err), "Error stopping server")
 }
 
 func (mgr *ServerManager) waitResize(id string) *retry.Result {
@@ -258,27 +258,27 @@ func (mgr *ServerManager) Resize(id string, templateID string) error {
 	}).ExtractErr()
 	if err != nil {
 		servers.RevertResize(mgr.OpenStack.Compute, id)
-		return errors.Wrap(ProviderError(err), "Error resizing server")
+		return errors.Wrap(ProviderError(err), "error resizing server")
 	}
 	res := mgr.waitResize(id)
 	if res.LastError != nil {
-		return errors.Wrap(ProviderError(res.LastError), "Error resizing server")
+		return errors.Wrap(ProviderError(res.LastError), "error resizing server")
 	}
 	srv := res.LastValue.(*servers.Server)
 	if srv == nil {
 		servers.RevertResize(mgr.OpenStack.Compute, id)
-		err := fmt.Errorf("Unable to retrive server state")
-		return errors.Wrap(err, "Error resizing server")
+		err := fmt.Errorf("unable to retrive server state")
+		return errors.Wrap(err, "error resizing server")
 	}
 	if srv.Status != "RESIZE" {
 		servers.RevertResize(mgr.OpenStack.Compute, id)
-		err := fmt.Errorf("Unexpected server state: %s", srv.Status)
-		return errors.Wrap(err, "Error resizing server")
+		err := fmt.Errorf("unexpected server state: %s", srv.Status)
+		return errors.Wrap(err, "error resizing server")
 	}
 	err = servers.ConfirmResize(mgr.OpenStack.Compute, id).ExtractErr()
 	if err != nil {
 		servers.RevertResize(mgr.OpenStack.Compute, id)
-		return errors.Wrap(ProviderError(err), "Error resizing server")
+		return errors.Wrap(ProviderError(err), "error resizing server")
 	}
 	return nil
 }

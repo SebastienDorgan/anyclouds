@@ -30,7 +30,7 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 	}, nil
 }
 
-//DeleteNetwork deletes the netwok identified by id
+//DeleteNetwork deletes the network identified by id
 func (mgr *NetworkManager) DeleteNetwork(id string) error {
 	_, err := mgr.AWS.EC2Client.DeleteVpc(&ec2.DeleteVpcInput{
 		VpcId: &id,
@@ -45,7 +45,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing network")
 	}
-	result := []api.Network{}
+	var result []api.Network
 	for _, vpc := range out.Vpcs {
 		result = append(result, api.Network{
 			ID:   *vpc.VpcId,
@@ -131,7 +131,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing subnets")
 	}
-	result := []api.Subnet{}
+	var result []api.Subnet
 	for _, sn := range out.Subnets {
 		result = append(result, *subnet(sn))
 	}
@@ -151,5 +151,5 @@ func (mgr *NetworkManager) GetSubnet(id string) (*api.Subnet, error) {
 			return subnet(sn), nil
 		}
 	}
-	return nil, fmt.Errorf("Subnet not found")
+	return nil, fmt.Errorf("subnet not found")
 }

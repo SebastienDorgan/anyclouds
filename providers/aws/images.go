@@ -16,7 +16,7 @@ type ImageManager struct {
 }
 
 func values(values ...string) []*string {
-	result := []*string{}
+	var result []*string
 	for _, v := range values {
 		result = append(result, aws.String(v))
 	}
@@ -28,23 +28,23 @@ func (mgr *ImageManager) search(owner string, name string) ([]api.Image, error) 
 		DryRun: aws.Bool(false),
 		Owners: values(owner),
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String("virtualization-type"),
 				Values: values("hvm"),
 			},
-			&ec2.Filter{
+			{
 				Name:   aws.String("architecture"),
 				Values: values("x86_64"),
 			},
-			&ec2.Filter{
+			{
 				Name:   aws.String("root-device-type"),
 				Values: values("ebs"),
 			},
-			&ec2.Filter{
+			{
 				Name:   aws.String("block-device-mapping.volume-type"),
 				Values: values("gp2"),
 			},
-			&ec2.Filter{
+			{
 				Name:   aws.String("name"),
 				Values: values(name),
 			},
@@ -53,7 +53,7 @@ func (mgr *ImageManager) search(owner string, name string) ([]api.Image, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting image")
 	}
-	result := []api.Image{}
+	var result []api.Image
 	for _, img := range out.Images {
 		result = append(result, *image(img))
 	}
@@ -79,7 +79,7 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 		return nil, errors.Wrap(err, "Error listing image")
 	}
 
-	result := []api.Image{}
+	var result []api.Image
 	result = append(result, imgsUbuntu...)
 	result = append(result, imgsRHEL...)
 	result = append(result, imgsDebian...)
@@ -99,7 +99,7 @@ func image(img *ec2.Image) *api.Image {
 	}
 }
 
-//Get retuns the image identified by id
+//Get returns the image identified by id
 func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 	out, err := mgr.AWS.EC2Client.DescribeImages(&ec2.DescribeImagesInput{
 		DryRun: aws.Bool(false),
@@ -108,13 +108,13 @@ func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error getting image")
+		return nil, errors.Wrap(err, "error getting image")
 	}
 	if len(out.Images) == 0 {
-		return nil, fmt.Errorf("Image %s not found", id)
+		return nil, fmt.Errorf("image %s not found", id)
 	}
 	if len(out.Images) > 1 {
-		return nil, fmt.Errorf("Multiple images with the same id: %s", id)
+		return nil, fmt.Errorf("multiple images with the same id: %s", id)
 	}
 	return image(out.Images[0]), nil
 }

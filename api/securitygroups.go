@@ -83,7 +83,7 @@ type SecurityGroupManager interface {
 	//Do not delete rules
 	Delete(id string) error
 	//List security groups
-	//Do not fecth rules
+	//Do not fetch rules
 	List() ([]SecurityGroup, error)
 	//Get security group
 	//fetch rules

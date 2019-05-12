@@ -8,8 +8,8 @@ type CPUArch string
 const (
 	//ArchX86 x86 32 bits architecture
 	ArchX86 CPUArch = "x86"
-	//ArchX86_64 x86 64 bits architecture
-	ArchX86_64 CPUArch = "x86_64"
+	//ArchX8664 x86 64 bits architecture
+	ArchX8664 CPUArch = "x86_64"
 	//ArchARM architecture
 	ArchARM CPUArch = "ARM"
 	//ArchUnknown unknown architecture
@@ -22,7 +22,7 @@ type GPU struct {
 	Type   string
 }
 
-//ServerTemplate defines instace template type
+//ServerTemplate defines instance template type
 type ServerTemplate struct {
 	ID              string
 	Name            string
@@ -37,6 +37,7 @@ type ServerTemplate struct {
 	Arch              CPUArch
 	CPUSpeed          float32
 	GPU               *GPU
+	OneDemandPrice    float32
 }
 
 //ServerTemplateManager defines Server template management functions a anyclouds provider must provide

@@ -13,7 +13,8 @@ type AWSImageManagerTestSuite struct {
 
 //SetupSuite set up image manager
 func (suite *AWSImageManagerTestSuite) SetupSuite() {
-	suite.Mgr = GetProvider().GetImageManager()
+	p, _ := GetProvider()
+	suite.Mgr = p.GetImageManager()
 }
 
 func TestAWSImageManagerTestSuite(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"github.com/SebastienDorgan/anyclouds/serverconf"
 )
 
-//Configurationfactory abstract the creation of a server init script (cloud-init, shell, ...)
-type Configurationfactory struct {
+//ConfigurationFactory abstract the creation of a server init script (cloud-init, shell, ...)
+type ConfigurationFactory struct {
 }
 
 //Build create a cloud-init configuration

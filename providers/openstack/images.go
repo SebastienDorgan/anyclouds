@@ -35,7 +35,7 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 	return imgList, nil
 }
 
-//Get retuns the image identified by id
+//Get returns the image identified by id
 func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 	img, err := images.Get(mgr.OpenStack.Compute, id).Extract()
 	if err != nil {

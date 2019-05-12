@@ -39,12 +39,12 @@ func (mgr *VolumeManager) Detach(volumeID string, serverID string) error {
 	return nil
 }
 
-//Attachement returns the attachement between a volume and an Server
-func (mgr *VolumeManager) Attachement(volumeID string, serverID string) (*api.VolumeAttachment, error) {
+//Attachment returns the attachment between a volume and an Server
+func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
 	return nil, nil
 }
 
-//Attachments returns all the attachements of an Server
+//Attachments returns all the attachments of an Server
 func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
 	return nil, nil
 }

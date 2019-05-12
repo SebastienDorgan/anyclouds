@@ -33,7 +33,7 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 	}, nil
 }
 
-//DeleteNetwork deletes the netwok identified by id
+//DeleteNetwork deletes the network identified by id
 func (mgr *NetworkManager) DeleteNetwork(id string) error {
 	err := networks.Delete(mgr.OpenStack.Network, id).ExtractErr()
 	if err != nil {
@@ -53,7 +53,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing network")
 	}
-	nets := []api.Network{}
+	var nets []api.Network
 	for _, n := range l {
 		net := api.Network{
 			ID:   n.ID,
@@ -121,7 +121,7 @@ func (mgr *NetworkManager) findRouter(name string) (*routers.Router, error) {
 		return nil, err
 	}
 	if len(l) > 1 {
-		return nil, fmt.Errorf("State error: subnet is associated to more than one router")
+		return nil, fmt.Errorf("state error: subnet is associated to more than one router")
 	}
 	if len(l) == 0 {
 		return nil, nil
@@ -143,28 +143,28 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 	// Execute the operation and get back a subnets.Subnet struct
 	subnet, err := subnets.Create(mgr.OpenStack.Network, opts).Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error creating subnet")
+		return nil, errors.Wrap(ProviderError(err), "error creating subnet")
 	}
 
 	router, err := mgr.createRouter(subnet.ID)
 	if err != nil {
 		err = ProviderError(err)
-		nerr := mgr.DeleteSubnet(subnet.ID)
-		if nerr != nil {
-			err = errors.Wrap(err, ProviderError(nerr).Error())
+		err2 := mgr.DeleteSubnet(subnet.ID)
+		if err2 != nil {
+			err = errors.Wrap(err, ProviderError(err2).Error())
 		}
 		return nil, errors.Wrap(err, "Error creating subnet")
 	}
 	err = mgr.attachSubnetToRouter(router.ID, subnet.ID)
 	if err != nil {
 		err = ProviderError(err)
-		nerr := mgr.DeleteSubnet(subnet.ID)
-		if nerr != nil {
-			err = errors.Wrap(err, ProviderError(nerr).Error())
+		err2 := mgr.DeleteSubnet(subnet.ID)
+		if err2 != nil {
+			err = errors.Wrap(err, ProviderError(err2).Error())
 		}
-		nerr = mgr.deleteRouter(router.ID)
-		if nerr != nil {
-			err = errors.Wrap(err, ProviderError(nerr).Error())
+		err2 = mgr.deleteRouter(router.ID)
+		if err2 != nil {
+			err = errors.Wrap(err, ProviderError(err2).Error())
 		}
 		return nil, errors.Wrap(err, "Error creating subnet")
 	}
@@ -182,9 +182,9 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 func (mgr *NetworkManager) DeleteSubnet(id string) error {
 	err := subnets.Delete(mgr.OpenStack.Network, id).ExtractErr()
 	err = ProviderError(err)
-	r, nerr := mgr.findRouter(id)
-	if nerr != nil || r == nil {
-		return errors.Wrap(nerr, "Error creating subnet: cannot find router associated to subnet")
+	r, err2 := mgr.findRouter(id)
+	if err2 != nil || r == nil {
+		return errors.Wrap(err2, "Error creating subnet: cannot find router associated to subnet")
 	}
 	deleteRouter := func() (interface{}, error) {
 		return nil, mgr.deleteRouter(r.ID)
@@ -194,9 +194,9 @@ func (mgr *NetworkManager) DeleteSubnet(id string) error {
 	}
 	res := retry.With(deleteRouter).For(30 * time.Second).Every(5 * time.Second).Until(success).Go()
 	if res.Timeout {
-		nerr = res.LastValue.(error)
+		err2 = res.LastValue.(error)
 	}
-	return errors.Wrap(ProviderError(nerr), "Error creating subnet: cannot delete router assicated to subnet")
+	return errors.Wrap(ProviderError(err2), "Error creating subnet: cannot delete router associated to subnet")
 }
 
 //ListSubnets lists the subnet
@@ -211,7 +211,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error listing subnets")
 	}
-	res := []api.Subnet{}
+	var res []api.Subnet
 	for _, sn := range l {
 		item := api.Subnet{
 			CIDR:      sn.CIDR,

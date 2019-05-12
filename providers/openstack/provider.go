@@ -61,7 +61,7 @@ type Config struct {
 	// authentication token ID.
 	TokenID string `json:"token_id,omitempty"`
 
-	//Openstack region (data center) where the infrstructure will be created
+	//Openstack region (data center) where the infrastructure will be created
 	Region string `json:"region,omitempty"`
 
 	//FloatingIPPool name of the floating IP pool
@@ -89,7 +89,6 @@ func ProviderError(err error) error {
 	case *gc.ErrUnexpectedResponseCode:
 		return errors.Errorf("code: %d, reason: %s", e.Actual, string(e.Body[:]))
 	default:
-		// logrus.Debugf("Error code not yet handled specifically: ProviderErrorToString(%+v)\n", err)
 		return e
 	}
 }
@@ -114,11 +113,14 @@ type Provider struct {
 func (p *Provider) Init(config io.Reader, format string) error {
 	v := viper.New()
 	v.SetConfigType(format)
-	v.ReadConfig(config)
-	cfg := Config{}
-	err := v.Unmarshal(&cfg)
+	err := v.ReadConfig(config)
 	if err != nil {
-		return errors.Wrap(err, "Error reading provider configuration")
+		return errors.Wrap(err, "error reading provider configuration")
+	}
+	cfg := Config{}
+	err = v.Unmarshal(&cfg)
+	if err != nil {
+		return errors.Wrap(err, "error reading provider configuration")
 	}
 	opts := gc.AuthOptions{
 		IdentityEndpoint: cfg.IdentityEndpoint,
@@ -136,14 +138,14 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	// Openstack client
 	p.client, err = openstack.AuthenticatedClient(opts)
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
 	// Compute API
 	p.Compute, err = openstack.NewComputeV2(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
 	//Network API
 	p.Network, err = openstack.NewNetworkV2(p.client, gc.EndpointOpts{
@@ -151,14 +153,14 @@ func (p *Provider) Init(config io.Reader, format string) error {
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
 	//Volume API
 	p.Volume, err = openstack.NewBlockStorageV1(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initiliazing openstack driver")
+		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
 	p.ImagesManager.OpenStack = p
 	p.NetworkManager.OpenStack = p
@@ -185,7 +187,7 @@ func (p *Provider) GetImageManager() api.ImageManager {
 	return &p.ImagesManager
 }
 
-//GetTemplateManager returns an OpenStack IntanceTemplateManager
+//GetTemplateManager returns an OpenStack ServerTemplateManager
 func (p *Provider) GetTemplateManager() api.ServerTemplateManager {
 	return &p.TemplateManager
 }

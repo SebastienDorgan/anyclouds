@@ -17,7 +17,7 @@ type User struct {
 	//Optional. Set to the local path you want to use. Defaults to /home/<Name>
 	Homedir string
 	//Optional. define the primary group. Defaults to a new group created named after the user.
-	PrimaryGoup string
+	PrimaryGroup string
 	//Optional. Additional groups to add the user to.
 	Groups []string
 	//Optional. The SELinux user for the user's login. When this is omitted the system will select the default SELinux user.
@@ -143,7 +143,7 @@ type ServerConfiguration struct {
 	Extras             map[string]interface{}
 }
 
-//Configurationfactory abstract the creation of a server init script (cloud-init, shell, ...)
-type Configurationfactory interface {
+//ConfigurationFactory abstract the creation of a server init script (cloud-init, shell, ...)
+type ConfigurationFactory interface {
 	Build(cfg *ServerConfiguration) (io.ByteReader, error)
 }

@@ -13,7 +13,8 @@ type AWSNetworkManagerTestSuite struct {
 
 //SetupSuite set up image manager
 func (suite *AWSNetworkManagerTestSuite) SetupSuite() {
-	suite.Mgr = GetProvider().GetNetworkManager()
+	p, _ := GetProvider()
+	suite.Mgr = p.GetNetworkManager()
 }
 
 func TestAWSNetworkManagerTestSuite(t *testing.T) {

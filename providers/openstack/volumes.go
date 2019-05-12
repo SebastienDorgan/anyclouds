@@ -43,7 +43,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 		return nil, errors.Wrap(ProviderError(err), "Error listing volume")
 	}
 	l, err := volumes.ExtractVolumes(page)
-	res := []api.Volume{}
+	var res []api.Volume
 	for _, v := range l {
 		res = append(res, api.Volume{
 			Name: v.Name,
@@ -91,13 +91,13 @@ func (mgr *VolumeManager) Detach(volumeID string, serverID string) error {
 	return errors.Wrap(ProviderError(err), "Error detaching volume from server")
 }
 
-//Attachement returns the attachement between a volume and an Server
-func (mgr *VolumeManager) Attachement(volumeID string, serverID string) (*api.VolumeAttachment, error) {
-	attachements, err := mgr.Attachments(serverID)
+//Attachment returns the attachment between a volume and an Server
+func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
+	attachments, err := mgr.Attachments(serverID)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Retrieving  attachment")
 	}
-	for _, va := range attachements {
+	for _, va := range attachments {
 		if va.VolumeID == volumeID && va.ServerID == serverID {
 			return &va, nil
 		}
@@ -105,13 +105,13 @@ func (mgr *VolumeManager) Attachement(volumeID string, serverID string) (*api.Vo
 	return nil, nil
 }
 
-//Attachments returns all the attachements of an Server
+//Attachments returns all the attachments of an Server
 func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
 	page, err := volumeattach.List(mgr.OpenStack.Compute, serverID).AllPages()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Retrieving listing attachments")
 	}
-	res := []api.VolumeAttachment{}
+	var res []api.VolumeAttachment
 	l, err := volumeattach.ExtractVolumeAttachments(page)
 	for _, va := range l {
 		res = append(res, api.VolumeAttachment{

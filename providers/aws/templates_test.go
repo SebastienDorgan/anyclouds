@@ -13,7 +13,9 @@ type AWSTemplateManagerTestSuite struct {
 
 //SetupSuite set up image manager
 func (suite *AWSTemplateManagerTestSuite) SetupSuite() {
-	suite.Mgr = GetProvider().GetTemplateManager()
+	p, _ := GetProvider()
+	suite.Mgr =
+		p.GetTemplateManager()
 }
 
 func TestAWSTemplateTestSuite(t *testing.T) {

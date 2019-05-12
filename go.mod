@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tidwall/gjson v1.2.1
 	github.com/tidwall/match v1.0.1 // indirect
-	github.com/tidwall/pretty v0.0.0-20180105212114-65a9db5fad51 // indirect
+	github.com/tidwall/pretty v0.0.0-20190325153808-1166b9ac2b65 // indirect
 	golang.org/x/crypto v0.0.0-20190211182817-74369b46fc67
 	golang.org/x/net v0.0.0-20190310074541-c10a0554eabf // indirect
 	golang.org/x/sys v0.0.0-20190310054646-10058d7d4faa // indirect

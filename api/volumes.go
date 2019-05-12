@@ -15,7 +15,7 @@ type VolumeOptions struct {
 	Type string
 }
 
-//VolumeAttachment attachment between an instace and a volume
+//VolumeAttachment attachment between an instance and a volume
 type VolumeAttachment struct {
 	ID       string
 	VolumeID string
