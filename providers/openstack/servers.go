@@ -34,17 +34,35 @@ func (o createServerOpts) ToServerCreateMap() (map[string]interface{}, error) {
 	return m, nil
 
 }
+
+func (mgr *ServerManager) networks(subnets []string) ([]servers.Network, error) {
+	allSubnets, err := mgr.OpenStack.NetworkManager.listAllSubnets()
+	var nets []servers.Network
+	if err != nil {
+		return nil, err
+	}
+	for _, asn := range allSubnets {
+		for _, sn := range subnets {
+			if asn.ID == sn {
+				nets = append(nets, servers.Network{
+					UUID: asn.NetworkID,
+				})
+			}
+		}
+	}
+	return nets, nil
+}
 func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*servers.Server, error) {
+	nets, err := mgr.networks(options.Subnets)
+	if err != nil {
+		return nil, err
+	}
 	opts := servers.CreateOpts{
 		FlavorRef:      options.TemplateID,
 		ImageRef:       options.ImageID,
 		Name:           options.Name,
 		SecurityGroups: options.SecurityGroups,
-	}
-	for _, n := range options.Networks {
-		opts.Networks = append(opts.Networks, servers.Network{
-			UUID: n,
-		})
+		Networks:       nets,
 	}
 
 	return servers.Create(mgr.OpenStack.Compute, createServerOpts{

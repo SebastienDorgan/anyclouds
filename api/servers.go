@@ -62,7 +62,7 @@ type CreateServerOptions struct {
 	TemplateID      string
 	ImageID         string
 	SecurityGroups  []string
-	Networks        []string
+	Subnets         []string
 	PublicIP        bool
 	BootstrapScript io.Reader
 	KeyPairName     string

@@ -2,6 +2,8 @@ package aws
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,9 +19,9 @@ type ServerManager struct {
 
 func networkInterfaces(options *api.CreateServerOptions) []*ec2.InstanceNetworkInterfaceSpecification {
 	var out []*ec2.InstanceNetworkInterfaceSpecification
-	for _, n := range options.Networks {
+	for _, sn := range options.Subnets {
 		ni := ec2.InstanceNetworkInterfaceSpecification{
-			SubnetId: aws.String(n),
+			SubnetId: aws.String(sn),
 		}
 		out = append(out, &ni)
 	}
@@ -42,8 +44,9 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (
 			},
 			SecurityGroupIds:  aws.StringSlice(options.SecurityGroups),
 			NetworkInterfaces: networkInterfaces(options),
+			UserData:          aws.String(toString(options.BootstrapScript)),
 		},
-		SpotPrice: aws.String(fmt.Sprintf("%f", tpl.OneDemandPrice/3.0)),
+		SpotPrice: aws.String(fmt.Sprintf("%f", tpl.OneDemandPrice/4.0)),
 		Type:      aws.String("one-time"),
 	}
 
@@ -63,11 +66,39 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (
 
 }
 
+func toString(reader io.Reader) string {
+	b, _ := ioutil.ReadAll(reader)
+	return string(b)
+}
+
 func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOptions) (*api.Server, error) {
-	return nil, nil
+	out, err := mgr.AWS.EC2Client.RunInstances(&ec2.RunInstancesInput{
+		ImageId:           aws.String(options.ImageID),
+		InstanceType:      aws.String(options.TemplateID),
+		KeyName:           aws.String(options.KeyPairName),
+		SecurityGroupIds:  aws.StringSlice(options.SecurityGroups),
+		NetworkInterfaces: networkInterfaces(options),
+		UserData:          aws.String(toString(options.BootstrapScript)),
+		Placement: &ec2.Placement{
+			AvailabilityZone: aws.String(mgr.AWS.Region),
+		},
+		MinCount: aws.Int64(1),
+		MaxCount: aws.Int64(1),
+	})
+	if err != nil || out.Instances == nil {
+		return nil, errors.Wrap(err, "Error creating on demand instance")
+	}
+	srv, err := mgr.Get(*out.Instances[0].InstanceId)
+	if err != nil || out.Instances == nil {
+		return nil, errors.Wrap(err, "Error creating on demand instance")
+	}
+	return srv, nil
 }
 
 func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOptions) (*api.Server, error) {
+	//out, err := mgr.AWS.EC2Client.PurchaseReservedInstancesOffering(&ec2.PurchaseReservedInstancesOfferingInput{
+	//
+	//})
 	return nil, nil
 }
 

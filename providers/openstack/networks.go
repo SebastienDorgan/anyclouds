@@ -225,6 +225,29 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 	return res, nil
 }
 
+func (mgr *NetworkManager) listAllSubnets() ([]api.Subnet, error) {
+	page, err := subnets.List(mgr.OpenStack.Network, subnets.ListOpts{}).AllPages()
+	if err != nil {
+		return nil, errors.Wrap(ProviderError(err), "Error listing subnets")
+	}
+	l, err := subnets.ExtractSubnets(page)
+	if err != nil {
+		return nil, errors.Wrap(ProviderError(err), "Error listing subnets")
+	}
+	var res []api.Subnet
+	for _, sn := range l {
+		item := api.Subnet{
+			CIDR:      sn.CIDR,
+			ID:        sn.ID,
+			IPVersion: api.IPVersion(sn.IPVersion),
+			Name:      sn.Name,
+			NetworkID: sn.NetworkID,
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
 //GetSubnet returns the configuration of the subnet identified by id
 func (mgr *NetworkManager) GetSubnet(id string) (*api.Subnet, error) {
 	sn, err := subnets.Get(mgr.OpenStack.Network, id).Extract()
