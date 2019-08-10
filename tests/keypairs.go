@@ -30,7 +30,7 @@ func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
 	pub, _ := ssh.NewPublicKey(&publicKey)
 	pubBytes := ssh.MarshalAuthorizedKey(pub)
 
-	err = s.Mgr.Load("pktest", pubBytes)
+	err = s.Mgr.Import("pktest", pubBytes)
 	assert.NoError(s.T(), err)
 
 	keypairs, err = s.Mgr.List()

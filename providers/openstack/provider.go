@@ -156,12 +156,13 @@ func (p *Provider) Init(config io.Reader, format string) error {
 		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
 	//Volume API
-	p.Volume, err = openstack.NewBlockStorageV1(p.client, gc.EndpointOpts{
+	p.Volume, err = openstack.NewBlockStorageV2(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
 		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
+
 	p.ImagesManager.OpenStack = p
 	p.NetworkManager.OpenStack = p
 	p.ServerManager.OpenStack = p

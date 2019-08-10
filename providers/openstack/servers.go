@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"fmt"
+	"github.com/SebastienDorgan/anyclouds/providers"
 	"time"
 
 	"github.com/SebastienDorgan/anyclouds/api"
@@ -71,31 +72,17 @@ func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*serve
 	}).Extract()
 }
 
-func (mgr *ServerManager) waitNotTransientState(srv *servers.Server) *retry.Result {
-	get := func() (interface{}, error) {
-		return mgr.Get(srv.ID)
-	}
-	finished := func(v interface{}, e error) bool {
-		state := v.(*api.Server).State
-		return state != api.ServerTransientState
-	}
-	return retry.With(get).For(3 * time.Minute).Every(time.Second).Until(finished).Go()
-}
-
 //Create creates an Server with options
 func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
 	srv, err := mgr.createServer(options)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating server")
 	}
-	res := mgr.waitNotTransientState(srv)
-	if res.Timeout || res.LastError != nil {
-		if res.LastError != nil {
-			return nil, errors.Wrap(res.LastError, "Error creating server")
-		}
-		return nil, errors.Wrap(errors.Errorf("Timeout"), "Error creating server")
+	s, err := providers.WaitUntilServerReachStableState(mgr, srv.ID)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error creating server")
 	}
-	s := res.LastValue.(*api.Server)
+
 	if s.State != api.ServerReady {
 		return nil, errors.Wrap(errors.Errorf("Server in unexpected state: %s", s.State), "Error creating server")
 	}
@@ -114,8 +101,8 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating server")
 	}
-	//One more get to update PublicIPv4 and PublicIPv6
-	return mgr.Get(srv.ID)
+	return providers.WaitUntilServerReachStableState(mgr, srv.ID)
+
 }
 
 func (mgr *ServerManager) findIP(srvID string) *floatingips.FloatingIP {
@@ -169,7 +156,7 @@ func state(status string) api.ServerState {
 	case "UNKNOWN":
 		return api.ServerUnknownState
 	default:
-		return api.ServerTransientState
+		return api.ServerPending
 	}
 
 }

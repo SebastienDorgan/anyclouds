@@ -11,8 +11,8 @@ type KeyPairManager struct {
 	OpenStack *Provider
 }
 
-//Load load a public key
-func (mgr *KeyPairManager) Load(name string, publicKey []byte) error {
+//Import load a public key
+func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 	_, err := keypairs.Create(mgr.OpenStack.Compute, keypairs.CreateOpts{
 		Name:      name,
 		PublicKey: string(publicKey),

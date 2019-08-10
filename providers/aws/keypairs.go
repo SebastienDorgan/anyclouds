@@ -12,8 +12,8 @@ type KeyPairManager struct {
 	AWS *Provider
 }
 
-//Load load a public key
-func (mgr *KeyPairManager) Load(name string, publicKey []byte) error {
+//Import load a public key
+func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 	_, err := mgr.AWS.EC2Client.ImportKeyPair(&ec2.ImportKeyPairInput{
 		DryRun:            aws.Bool(false),
 		KeyName:           aws.String(name),

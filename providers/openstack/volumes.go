@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"github.com/SebastienDorgan/anyclouds/api"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v1/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
 	"github.com/pkg/errors"
@@ -15,9 +16,9 @@ type VolumeManager struct {
 //Create creates a volume with options
 func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error) {
 	v, err := volumes.Create(mgr.OpenStack.Volume, volumes.CreateOpts{
-		Name:       options.Name,
-		Size:       options.Size,
-		VolumeType: options.Type,
+		Name: options.Name,
+		Size: int(options.Size),
+		//VolumeType: options.Type,
 	}).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating volume")
@@ -25,8 +26,7 @@ func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error
 	return &api.Volume{
 		Name: v.Name,
 		ID:   v.ID,
-		Size: v.Size,
-		Type: v.VolumeType,
+		Size: int64(v.Size),
 	}, nil
 }
 
@@ -48,8 +48,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 		res = append(res, api.Volume{
 			Name: v.Name,
 			ID:   v.ID,
-			Size: v.Size,
-			Type: v.VolumeType,
+			Size: int64(v.Size),
 		})
 	}
 	return res, nil
@@ -64,14 +63,14 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 	return &api.Volume{
 		Name: v.Name,
 		ID:   v.ID,
-		Size: v.Size,
-		Type: v.VolumeType,
+		Size: int64(v.Size),
 	}, nil
 }
 
 //Attach attaches a volume to an Server
-func (mgr *VolumeManager) Attach(volumeID string, serverID string) (*api.VolumeAttachment, error) {
+func (mgr *VolumeManager) Attach(volumeID string, serverID string, device string) (*api.VolumeAttachment, error) {
 	va, err := volumeattach.Create(mgr.OpenStack.Compute, serverID, volumeattach.CreateOpts{
+		Device:   device,
 		VolumeID: volumeID,
 	}).Extract()
 	if err != nil {
@@ -86,16 +85,20 @@ func (mgr *VolumeManager) Attach(volumeID string, serverID string) (*api.VolumeA
 }
 
 //Detach detach a volume from an Server
-func (mgr *VolumeManager) Detach(volumeID string, serverID string) error {
-	err := volumeattach.List(mgr.OpenStack.Compute, "").Err
-	return errors.Wrap(ProviderError(err), "Error detaching volume from server")
+func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) error {
+	att, err := mgr.Attachment(volumeID, serverID)
+	if err != nil {
+		return errors.Wrapf(ProviderError(err), "Error detaching volume %s from server %s", volumeID, serverID)
+	}
+	err = volumeattach.Delete(mgr.OpenStack.Compute, serverID, att.ID).Err
+	return errors.Wrapf(err, "Error detaching volume %s from server %s", volumeID, serverID)
 }
 
 //Attachment returns the attachment between a volume and an Server
 func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
 	attachments, err := mgr.Attachments(serverID)
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Retrieving  attachment")
+		return nil, errors.Wrapf(ProviderError(err), "Error retrieving attachment between volume %s and server %s", volumeID, serverID)
 	}
 	for _, va := range attachments {
 		if va.VolumeID == volumeID && va.ServerID == serverID {
@@ -109,7 +112,7 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
 	page, err := volumeattach.List(mgr.OpenStack.Compute, serverID).AllPages()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Retrieving listing attachments")
+		return nil, errors.Wrapf(ProviderError(err), "Error listing attachments of server %s", serverID)
 	}
 	var res []api.VolumeAttachment
 	l, err := volumeattach.ExtractVolumeAttachments(page)
@@ -122,4 +125,14 @@ func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, 
 		})
 	}
 	return res, nil
+}
+
+func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume, error) {
+	err := volumeactions.ExtendSize(mgr.OpenStack.Volume, options.ID, volumeactions.ExtendSizeOpts{
+		NewSize: int(options.Size)}).Err
+	if err != nil {
+		return nil, errors.Wrapf(ProviderError(err), "Error modifying volume %s", options.ID)
+	}
+
+	return mgr.Get(options.ID)
 }

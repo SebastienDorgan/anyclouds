@@ -8,7 +8,7 @@ type KeyPair struct {
 
 //KeyPairManager manage ssh keys
 type KeyPairManager interface {
-	Load(name string, publicKey []byte) error
+	Import(name string, publicKey []byte) error
 	Delete(name string) error
 	List() ([]KeyPair, error)
 }

@@ -9,8 +9,8 @@ import (
 type ServerState string
 
 const (
-	//ServerBuilding State of an Server in building
-	ServerBuilding ServerState = "BUILDING"
+	////ServerBuilding State of an Server in building
+	//ServerBuilding ServerState = "BUILDING"
 	//ServerReady State of a started Server
 	ServerReady ServerState = "READY"
 	//ServerPaused State of a paused server
@@ -21,8 +21,8 @@ const (
 	ServerShutoff ServerState = "SHUTOFF"
 	//ServerInError State of an Server in error
 	ServerInError ServerState = "ERROR"
-	//ServerTransientState State of an Server in transient state
-	ServerTransientState ServerState = "TRANSIENT"
+	//ServerPending State of an Server in transient state
+	ServerPending ServerState = "TRANSIENT"
 	//ServerUnknownState State of an Server in error
 	ServerUnknownState ServerState = "UNKNOWN"
 )

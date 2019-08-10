@@ -1,9 +1,13 @@
 package aws
 
 import (
+	"encoding/binary"
 	"fmt"
+	"github.com/SebastienDorgan/anyclouds/providers"
 	"io"
 	"io/ioutil"
+	"sort"
+	"time"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
@@ -12,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//ServerManager defines Server management functions an anyclouds provider must provide
+//ServerManager defines Server management functions for AWS using EC2 interface
 type ServerManager struct {
 	AWS *Provider
 }
@@ -56,13 +60,13 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (
 	}
 	req := out.SpotInstanceRequests[0]
 	if req.InstanceId == nil {
+		_, _ = mgr.AWS.EC2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
+			DryRun:                 aws.Bool(false),
+			SpotInstanceRequestIds: []*string{req.InstanceId},
+		})
 		return nil, errors.Wrap(err, "Error creating spot instance")
 	}
-	srv, err := mgr.Get(*req.InstanceId)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error creating spot instance")
-	}
-	return srv, nil
+	return mgr.Get(*req.InstanceId)
 
 }
 
@@ -85,21 +89,77 @@ func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOption
 		MinCount: aws.Int64(1),
 		MaxCount: aws.Int64(1),
 	})
-	if err != nil || out.Instances == nil {
+	if err != nil {
 		return nil, errors.Wrap(err, "Error creating on demand instance")
 	}
-	srv, err := mgr.Get(*out.Instances[0].InstanceId)
-	if err != nil || out.Instances == nil {
-		return nil, errors.Wrap(err, "Error creating on demand instance")
+	if out.Instances == nil || out.Instances[0].InstanceId == nil {
+		return nil, errors.Errorf("Unknow error creating reserved instance")
 	}
-	return srv, nil
+	return mgr.Get(*out.Instances[0].InstanceId)
+}
+
+func (mgr *ServerManager) searchReservedInstanceOffering(options *api.CreateServerOptions) (*ec2.ReservedInstancesOffering, error) {
+	tpl, err := mgr.AWS.TemplateManager.Get(options.TemplateID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Invalid template ID %s", options.TemplateID)
+	}
+	if tpl == nil {
+		return nil, errors.Errorf("Unknow error getting server template %s", options.TemplateID)
+	}
+	out, err := mgr.AWS.EC2Client.DescribeReservedInstancesOfferings(&ec2.DescribeReservedInstancesOfferingsInput{
+		AvailabilityZone:             aws.String(mgr.AWS.Region),
+		DryRun:                       aws.Bool(false),
+		Filters:                      nil,
+		IncludeMarketplace:           aws.Bool(false),
+		InstanceTenancy:              nil,
+		InstanceType:                 aws.String(tpl.Name),
+		MaxDuration:                  aws.Int64(int64(options.LeaseDuration / time.Second)),
+		MaxInstanceCount:             aws.Int64(1),
+		MaxResults:                   nil,
+		MinDuration:                  nil,
+		NextToken:                    nil,
+		OfferingClass:                nil,
+		OfferingType:                 nil,
+		ProductDescription:           nil,
+		ReservedInstancesOfferingIds: nil,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error searching a reserved offering matching server options")
+	}
+	if out.ReservedInstancesOfferings == nil {
+		return nil, nil
+	}
+	//sort by descending duration (max duration first)
+	sort.Slice(out.ReservedInstancesOfferings, func(i, j int) bool {
+		return *out.ReservedInstancesOfferings[i].Duration > *out.ReservedInstancesOfferings[j].Duration
+	})
+	return out.ReservedInstancesOfferings[0], nil
 }
 
 func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOptions) (*api.Server, error) {
-	//out, err := mgr.AWS.EC2Client.PurchaseReservedInstancesOffering(&ec2.PurchaseReservedInstancesOfferingInput{
-	//
-	//})
-	return nil, nil
+	offering, err := mgr.searchReservedInstanceOffering(options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error creating reserved instance")
+	}
+	if offering == nil {
+		return nil, errors.Wrapf(
+			errors.Errorf("No reserved instance offering matching server options found"),
+			"Error creating reserved instance")
+	}
+
+	out, err := mgr.AWS.EC2Client.PurchaseReservedInstancesOffering(&ec2.PurchaseReservedInstancesOfferingInput{
+		DryRun:                      aws.Bool(false),
+		InstanceCount:               aws.Int64(1),
+		LimitPrice:                  nil,
+		ReservedInstancesOfferingId: offering.ReservedInstancesOfferingId,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "Error creating reserved instance")
+	}
+	if out.ReservedInstancesId == nil {
+		return nil, errors.Errorf("Unknow error creating reserved instance")
+	}
+	return mgr.Get(*out.ReservedInstancesId)
 }
 
 func (mgr *ServerManager) associatePublicAddress(instanceID string) (string, error) {
@@ -140,7 +200,8 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	if err != nil {
 		return srv, errors.Wrapf(err, "error associating elastic ip to server %s", srv.ID)
 	}
-	return mgr.Get(srv.ID)
+	return providers.WaitUntilServerReachStableState(mgr, srv.ID)
+
 }
 
 //Delete delete Server identified by id
@@ -217,10 +278,19 @@ func ips(in []*ec2.InstanceNetworkInterface) map[api.IPVersion][]string {
 	return ipMap
 }
 
+func codeValue(code *int64) uint8 {
+	if code == nil {
+		return 255
+	}
+	bs := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bs, uint64(*code))
+	return bs[0]
+}
+
 func state(in *ec2.InstanceState) api.ServerState {
-	switch *in.Code {
+	switch codeValue(in.Code) {
 	case 0:
-		return api.ServerBuilding
+		return api.ServerPending
 	case 16:
 		return api.ServerReady
 	case 32:
