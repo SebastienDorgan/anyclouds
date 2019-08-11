@@ -42,10 +42,7 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 		return nil, errors.Wrapf(err, "Error creating network %s", options.Name)
 	}
 
-	return &api.Network{
-		ID:   *out.Vpc.VpcId,
-		CIDR: *out.Vpc.CidrBlock,
-	}, nil
+	return mgr.GetNetwork(*out.Vpc.VpcId)
 }
 
 //DeleteNetwork deletes the network identified by id

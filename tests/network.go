@@ -19,6 +19,7 @@ func (s *NetworkManagerTestSuite) TestNetworks() {
 	l0 := len(nets)
 	n, err := Mgr.CreateNetwork(&api.NetworkOptions{
 		CIDR: "10.0.0.0/16",
+		Name: "test_net",
 	})
 	assert.NoError(s.T(), err)
 	nets, err = Mgr.ListNetworks()
@@ -29,6 +30,7 @@ func (s *NetworkManagerTestSuite) TestNetworks() {
 		if nn.ID == n.ID {
 			found = true
 			assert.Equal(s.T(), n.CIDR, nn.CIDR)
+			assert.Equal(s.T(), n.Name, nn.Name)
 			break
 		}
 	}
@@ -36,6 +38,7 @@ func (s *NetworkManagerTestSuite) TestNetworks() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), ng.ID, n.ID)
 	assert.Equal(s.T(), ng.CIDR, n.CIDR)
+	assert.Equal(s.T(), ng.Name, n.Name)
 	assert.True(s.T(), found)
 	err = Mgr.DeleteNetwork(n.ID)
 	assert.NoError(s.T(), err)
@@ -65,6 +68,7 @@ func (s *NetworkManagerTestSuite) TestSubnets() {
 		CIDR:      "10.0.1.0/24",
 		IPVersion: api.IPVersion4,
 		NetworkID: n.ID,
+		Name:      "test_subnet",
 	})
 	assert.NoError(s.T(), err)
 
@@ -75,6 +79,7 @@ func (s *NetworkManagerTestSuite) TestSubnets() {
 	assert.Equal(s.T(), tmp.CIDR, sn.CIDR)
 	assert.Equal(s.T(), tmp.IPVersion, sn.IPVersion)
 	assert.Equal(s.T(), tmp.NetworkID, sn.NetworkID)
+	assert.Equal(s.T(), tmp.Name, sn.Name)
 
 	sns, err = s.Mgr.ListSubnets(n.ID)
 	assert.NoError(s.T(), err)
@@ -85,6 +90,7 @@ func (s *NetworkManagerTestSuite) TestSubnets() {
 			assert.Equal(s.T(), st.CIDR, sn.CIDR)
 			assert.Equal(s.T(), st.IPVersion, sn.IPVersion)
 			assert.Equal(s.T(), st.NetworkID, sn.NetworkID)
+			assert.Equal(s.T(), st.Name, sn.Name)
 			found = true
 			break
 		}
