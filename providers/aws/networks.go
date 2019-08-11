@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,7 +22,24 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 		CidrBlock:                   &options.CIDR,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error creating network")
+		return nil, errors.Wrapf(err, "error creating network %s", options.Name)
+	}
+
+	_, err = mgr.AWS.EC2Client.CreateTags(&ec2.CreateTagsInput{
+		DryRun: aws.Bool(false),
+		Resources: []*string{
+			out.Vpc.VpcId,
+		},
+		Tags: []*ec2.Tag{
+			{
+				Key:   aws.String("name"),
+				Value: aws.String(options.Name),
+			},
+		},
+	})
+	if err != nil {
+		_ = mgr.DeleteNetwork(*out.Vpc.VpcId)
+		return nil, errors.Wrapf(err, "Error creating network %s", options.Name)
 	}
 
 	return &api.Network{
@@ -35,8 +53,22 @@ func (mgr *NetworkManager) DeleteNetwork(id string) error {
 	_, err := mgr.AWS.EC2Client.DeleteVpc(&ec2.DeleteVpcInput{
 		VpcId: &id,
 	})
-	return errors.Wrap(err, "Error deleting network")
+	return errors.Wrapf(err, "error deleting network %s", id)
 
+}
+
+func network(v *ec2.Vpc) *api.Network {
+	net := &api.Network{
+		ID:   *v.VpcId,
+		CIDR: *v.CidrBlock,
+	}
+	n := sort.Search(len(v.Tags), func(i int) bool {
+		return *v.Tags[i].Key == "name"
+	})
+	if n < len(v.Tags) {
+		net.Name = *v.Tags[n].Value
+	}
+	return net
 }
 
 //ListNetworks lists networks
@@ -47,10 +79,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 	}
 	var result []api.Network
 	for _, vpc := range out.Vpcs {
-		result = append(result, api.Network{
-			ID:   *vpc.VpcId,
-			CIDR: *vpc.CidrBlock,
-		})
+		result = append(result, *network(vpc))
 	}
 	return result, nil
 }
@@ -61,16 +90,12 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
 		VpcIds: []*string{&id},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing network")
+		return nil, errors.Wrapf(err, "error getting network %s", id)
 	}
-
 	if len(out.Vpcs) > 0 {
-		return &api.Network{
-			ID:   *out.Vpcs[0].VpcId,
-			CIDR: *out.Vpcs[0].CidrBlock,
-		}, nil
+		return network(out.Vpcs[0]), nil
 	}
-	return nil, errors.Wrap(err, "Network not found")
+	return nil, errors.Wrapf(err, "network %s not found", id)
 
 }
 
@@ -85,6 +110,12 @@ func subnet(s *ec2.Subnet) *api.Subnet {
 	} else if s.CidrBlock != nil {
 		sn.IPVersion = api.IPVersion4
 		sn.CIDR = *s.CidrBlock
+	}
+	n := sort.Search(len(s.Tags), func(i int) bool {
+		return *s.Tags[i].Key == "name"
+	})
+	if n < len(s.Tags) {
+		sn.Name = *s.Tags[n].Value
 	}
 	return &sn
 }
@@ -104,8 +135,23 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating subnet")
 	}
-
-	return subnet(out.Subnet), nil
+	_, err = mgr.AWS.EC2Client.CreateTags(&ec2.CreateTagsInput{
+		DryRun: aws.Bool(false),
+		Resources: []*string{
+			out.Subnet.SubnetId,
+		},
+		Tags: []*ec2.Tag{
+			{
+				Key:   aws.String("name"),
+				Value: aws.String(options.Name),
+			},
+		},
+	})
+	if err != nil {
+		_ = mgr.DeleteSubnet(*out.Subnet.SubnetId)
+		return nil, errors.Wrapf(err, "Error creating subnet %s", options.Name)
+	}
+	return mgr.GetSubnet(*out.Subnet.SubnetId)
 }
 
 //DeleteSubnet deletes the subnet identified by id
@@ -129,7 +175,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing subnets")
+		return nil, errors.Wrap(err, "error listing subnets")
 	}
 	var result []api.Subnet
 	for _, sn := range out.Subnets {
@@ -144,12 +190,12 @@ func (mgr *NetworkManager) GetSubnet(id string) (*api.Subnet, error) {
 		SubnetIds: []*string{&id},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing subnets")
+		return nil, errors.Wrapf(err, "error getting subnet %s", id)
 	}
 	for _, sn := range out.Subnets {
 		if id == *sn.SubnetId {
 			return subnet(sn), nil
 		}
 	}
-	return nil, fmt.Errorf("subnet not found")
+	return nil, fmt.Errorf("subnet %s not found", id)
 }

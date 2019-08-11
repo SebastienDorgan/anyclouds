@@ -11,6 +11,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func GetProvider() *aws.Provider {
+	var provider aws.Provider
+	usr, _ := user.Current()
+	path := filepath.Join(usr.HomeDir, ".anyclouds/aws_test.json")
+	file, err := os.Open(path)
+	err = provider.Init(file, "json")
+	if err != nil {
+		return nil
+	}
+	return &provider
+}
+
 //TestCreate create AWS provider
 func TestCreate(t *testing.T) {
 	var provider aws.Provider

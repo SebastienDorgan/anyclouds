@@ -4,7 +4,9 @@ package api
 type Network struct {
 	//unique identifier of the network
 	ID string
-	//name of the network
+	//Name of the network
+	Name string
+	//Cidr of the network
 	CIDR string
 }
 
@@ -12,6 +14,8 @@ type Network struct {
 type NetworkOptions struct {
 	//name of the network
 	CIDR string
+	//Name of the network
+	Name string
 }
 
 //IPVersion ip version enum

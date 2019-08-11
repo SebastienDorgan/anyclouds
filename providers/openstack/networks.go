@@ -22,7 +22,11 @@ type NetworkManager struct {
 //CreateNetwork creates a network
 func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
 	up := true
-	opts := networks.CreateOpts{Name: options.CIDR, AdminStateUp: &up}
+	opts := networks.CreateOpts{
+		AdminStateUp: &up,
+		Name:         options.Name,
+		Description:  options.CIDR,
+	}
 	network, err := networks.Create(mgr.OpenStack.Network, opts).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating network")
@@ -42,6 +46,14 @@ func (mgr *NetworkManager) DeleteNetwork(id string) error {
 	return nil
 }
 
+func network(net *networks.Network) *api.Network {
+	return &api.Network{
+		ID:   net.ID,
+		Name: net.Name,
+		CIDR: net.Description,
+	}
+}
+
 //ListNetworks lists networks
 func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 	opts := networks.ListOpts{}
@@ -55,11 +67,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 	}
 	var nets []api.Network
 	for _, n := range l {
-		net := api.Network{
-			ID:   n.ID,
-			CIDR: n.Name,
-		}
-		nets = append(nets, net)
+		nets = append(nets, *network(&n))
 	}
 	return nets, nil
 }
@@ -70,10 +78,7 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error getting network")
 	}
-	return &api.Network{
-		ID:   n.ID,
-		CIDR: n.Name,
-	}, nil
+	return network(n), nil
 }
 
 func (mgr *NetworkManager) createRouter(subnetID string) (*routers.Router, error) {
