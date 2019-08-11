@@ -22,8 +22,8 @@ const (
 	IPVersion6 IPVersion = 6
 	//IPVersion4 IPv4
 	IPVersion4 IPVersion = 4
-	////IPVersion4And6 IPv4 and IPv6
-	//IPVersion4And6 IPVersion = 10
+	//IPVersion4And6 IPv4 and IPv6
+	IPVersion4And6 IPVersion = 10
 )
 
 //SubnetOptions defines options to use when creating a sub network

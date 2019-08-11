@@ -196,7 +196,7 @@ func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) e
 		VolumeId:   aws.String(volumeID),
 	})
 
-	return errors.Wrapf(err, "Error detaching volume %s to server %s on device %s", volumeID, serverID)
+	return errors.Wrapf(err, "Error detaching volume %s from server %s", volumeID, serverID)
 
 }
 
@@ -260,7 +260,7 @@ func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume,
 		VolumeType: aws.String(vType),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error modifying volume", options.ID)
+		return nil, errors.Wrapf(err, "Error modifying volume %s", options.ID)
 	}
 	return mgr.Get(*out.VolumeModification.VolumeId)
 }
