@@ -42,12 +42,67 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 		return nil, errors.Wrapf(err, "Error creating network %s", options.Name)
 	}
 
+	err = mgr.addInternetGateway(out)
+	if err != nil {
+		_ = mgr.DeleteNetwork(*out.Vpc.VpcId)
+		return nil, errors.Wrapf(err, "Error creating network %s", options.Name)
+	}
+
 	return mgr.GetNetwork(*out.Vpc.VpcId)
+}
+
+func (mgr *NetworkManager) addInternetGateway(out *ec2.CreateVpcOutput) error {
+	outGW, err := mgr.AWS.EC2Client.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
+	if err != nil {
+		return err
+	}
+	_, err = mgr.AWS.EC2Client.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
+		DryRun:            nil,
+		InternetGatewayId: outGW.InternetGateway.InternetGatewayId,
+		VpcId:             out.Vpc.VpcId,
+	})
+	return err
+}
+
+func (mgr *NetworkManager) removeInternetgateway(id string) error {
+	out, err := mgr.AWS.EC2Client.DescribeInternetGateways(&ec2.DescribeInternetGatewaysInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("attachment.vpc-id"),
+				Values: []*string{aws.String(id)},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	for _, gw := range out.InternetGateways {
+		_, err = mgr.AWS.EC2Client.DetachInternetGateway(&ec2.DetachInternetGatewayInput{
+			InternetGatewayId: gw.InternetGatewayId,
+			VpcId:             aws.String(id),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = mgr.AWS.EC2Client.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
+			InternetGatewayId: gw.InternetGatewayId,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
 
 //DeleteNetwork deletes the network identified by id
 func (mgr *NetworkManager) DeleteNetwork(id string) error {
-	_, err := mgr.AWS.EC2Client.DeleteVpc(&ec2.DeleteVpcInput{
+	err := mgr.removeInternetgateway(id)
+	if err != nil {
+		return errors.Wrapf(err, "error deleting network %s", id)
+
+	}
+	_, err = mgr.AWS.EC2Client.DeleteVpc(&ec2.DeleteVpcInput{
 		VpcId: &id,
 	})
 	return errors.Wrapf(err, "error deleting network %s", id)
@@ -119,9 +174,9 @@ func subnet(s *ec2.Subnet) *api.Subnet {
 
 //CreateSubnet creates a subnet
 func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet, error) {
-
 	input := ec2.CreateSubnetInput{
-		VpcId: &options.NetworkID,
+		AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
+		VpcId:            &options.NetworkID,
 	}
 	if options.IPVersion == api.IPVersion4 {
 		input.CidrBlock = &options.CIDR

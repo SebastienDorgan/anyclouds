@@ -3,7 +3,7 @@ package openstack
 import (
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v1/volumes"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
 	"github.com/pkg/errors"
 )
@@ -16,9 +16,18 @@ type VolumeManager struct {
 //Create creates a volume with options
 func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error) {
 	v, err := volumes.Create(mgr.OpenStack.Volume, volumes.CreateOpts{
-		Name: options.Name,
-		Size: int(options.Size),
-		//VolumeType: options.Type,
+		Size:               int(options.Size),
+		AvailabilityZone:   "",
+		ConsistencyGroupID: "",
+		Description:        "",
+		Metadata:           nil,
+		Name:               options.Name,
+		SnapshotID:         "",
+		SourceReplica:      "",
+		SourceVolID:        "",
+		ImageID:            "",
+		VolumeType:         "",
+		Multiattach:        false,
 	}).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating volume")
@@ -32,7 +41,7 @@ func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error
 
 //Delete deletes volume identified by id
 func (mgr *VolumeManager) Delete(id string) error {
-	err := volumes.Delete(mgr.OpenStack.Volume, id).ExtractErr()
+	err := volumes.Delete(mgr.OpenStack.Volume, id, volumes.DeleteOpts{Cascade: true}).ExtractErr()
 	return errors.Wrap(ProviderError(err), "Error deleting volume")
 }
 
@@ -109,12 +118,12 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 }
 
 //Attachments returns all the attachments of an Server
-func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
+func (mgr *VolumeManager) Attachments(serverID string) (api.VolumeAttachmentSlice, error) {
 	page, err := volumeattach.List(mgr.OpenStack.Compute, serverID).AllPages()
 	if err != nil {
 		return nil, errors.Wrapf(ProviderError(err), "Error listing attachments of server %s", serverID)
 	}
-	var res []api.VolumeAttachment
+	var res api.VolumeAttachmentSlice
 	l, err := volumeattach.ExtractVolumeAttachments(page)
 	for _, va := range l {
 		res = append(res, api.VolumeAttachment{

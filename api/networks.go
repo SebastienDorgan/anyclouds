@@ -10,6 +10,12 @@ type Network struct {
 	CIDR string
 }
 
+type NetworkSlice []Network
+
+func (s NetworkSlice) Len() int {
+	return len(s)
+}
+
 //NetworkOptions defines options to use when creating a network
 type NetworkOptions struct {
 	//name of the network

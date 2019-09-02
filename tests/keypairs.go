@@ -1,10 +1,7 @@
 package tests
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-
-	"golang.org/x/crypto/ssh"
+	"github.com/SebastienDorgan/anyclouds/sshutils"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/stretchr/testify/assert"
@@ -24,13 +21,10 @@ func (s *KeyPairManagerTestSuite) TestKeyPairManager() {
 	keypairs, err := s.Mgr.List()
 	assert.NoError(s.T(), err)
 	keysLen := len(keypairs)
+	kp, err := sshutils.CreateKeyPair(2048)
+	assert.NoError(s.T(), err)
 
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	publicKey := privateKey.PublicKey
-	pub, _ := ssh.NewPublicKey(&publicKey)
-	pubBytes := ssh.MarshalAuthorizedKey(pub)
-
-	err = s.Mgr.Import("pktest", pubBytes)
+	err = s.Mgr.Import("pktest", kp.PublicKey)
 	assert.NoError(s.T(), err)
 
 	keypairs, err = s.Mgr.List()

@@ -71,6 +71,9 @@ type Config struct {
 
 // ProviderError creates an error string from openstack api error
 func ProviderError(err error) error {
+	if err == nil {
+		return nil
+	}
 	switch e := err.(type) {
 	case gc.ErrDefault401:
 		return errors.Errorf("code: 401, reason: %s", string(e.Body[:]))
@@ -156,7 +159,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 	}
 	//Volume API
-	p.Volume, err = openstack.NewBlockStorageV2(p.client, gc.EndpointOpts{
+	p.Volume, err = openstack.NewBlockStorageV3(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {

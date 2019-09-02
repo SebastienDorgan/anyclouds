@@ -1,7 +1,6 @@
 package aws_test
 
 import (
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -34,7 +33,5 @@ func TestCreate(t *testing.T) {
 	assert.NoError(t, err)
 	images, err := provider.GetImageManager().List()
 	assert.NoError(t, err)
-	for _, img := range images {
-		fmt.Println(img.Name, img.CreatedAt)
-	}
+	assert.True(t, len(images) > 0)
 }

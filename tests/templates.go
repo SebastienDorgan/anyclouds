@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/SebastienDorgan/talgo"
 	"reflect"
 
 	"github.com/SebastienDorgan/anyclouds/api"
@@ -14,11 +15,24 @@ type TemplateManagerTestSuite struct {
 	Mgr api.ServerTemplateManager
 }
 
+func checkDouble(tpls []api.ServerTemplate) bool {
+	size := len(tpls)
+	n := talgo.FindFirst(size, func(i int) bool {
+		tail := tpls[i+1 : size]
+		n := talgo.FindFirst(len(tail), func(j int) bool {
+			return tail[j].ID == tpls[i].ID
+		})
+		return n < len(tail) && n > 0
+	})
+	return n < size && n > 0
+}
+
 //TestServerTemplateManager Canonical test for ServerTemplateManager implementation
 func (s *TemplateManagerTestSuite) TestServerTemplateManager() {
 	mgr := s.Mgr
 	templates, err := mgr.List()
 	assert.NoError(s.T(), err)
+	assert.False(s.T(), checkDouble(templates))
 	assert.True(s.T(), len(templates) > 0)
 	for _, tpl := range templates {
 		tp, err := mgr.Get(tpl.ID)

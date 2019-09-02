@@ -6,20 +6,24 @@ import "time"
 type CPUArch string
 
 const (
-	//ArchX86 x86 32 bits architecture
-	ArchX86 CPUArch = "x86"
-	//ArchX8664 x86 64 bits architecture
-	ArchX8664 CPUArch = "x86_64"
-	//ArchARM architecture
-	ArchARM CPUArch = "ARM"
+	//Arch386 x86 32 bits architecture
+	Arch386 CPUArch = "386"
+	//ArchAmd64 x86 64 bits architecture
+	ArchAmd64 CPUArch = "amd64"
+	//ArchARM ARM 32 bits architecture
+	ArchARM CPUArch = "arm"
+	//ArchARM64 ARM 64 bits architecture
+	ArchARM64 CPUArch = "arm"
 	//ArchUnknown unknown architecture
-	ArchUnknown CPUArch = "UNKNOWN"
+	ArchUnknown CPUArch = "unknown"
 )
 
-//GPU defines a GPU
-type GPU struct {
-	Number int
-	Type   string
+//GPUInfo defines a GPUInfo
+type GPUInfo struct {
+	Number       int
+	NumberOfCore int
+	MemorySize   int
+	Type         string
 }
 
 //ServerTemplate defines instance template type
@@ -35,8 +39,9 @@ type ServerTemplate struct {
 	EphemeralDiskSize int
 	CreatedAt         time.Time
 	Arch              CPUArch
-	CPUSpeed          float32
-	GPU               *GPU
+	CPUFrequency      float32
+	NetworkSpeed      int
+	GPUInfo           *GPUInfo
 	OneDemandPrice    float32
 }
 

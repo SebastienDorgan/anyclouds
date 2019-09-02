@@ -59,6 +59,8 @@ type Provider struct {
 	SecurityGroupManager *SecurityGroupManager
 	VolumeManager        *VolumeManager
 	Region               string
+	RegionName           string
+	AvailabilityZone     string
 }
 
 func getEC2Config(cfg *Config) *aws.Config {
@@ -108,6 +110,8 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.SecurityGroupManager = &SecurityGroupManager{AWS: p}
 	p.KeyPairManager = &KeyPairManager{AWS: p}
 	p.Region = cfg.Region
+	p.RegionName = v.GetString("RegionName")
+	p.AvailabilityZone = v.GetString("AvailabilityZone")
 	return nil
 
 }

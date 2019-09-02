@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"github.com/SebastienDorgan/retry"
 	"net"
+	"time"
 
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
@@ -69,6 +71,18 @@ func group(g *ec2.SecurityGroup) *api.SecurityGroup {
 	}
 }
 
+func (mgr *SecurityGroupManager) getGroup(id string) retry.Action {
+	return func() (v interface{}, e error) {
+		return mgr.Get(id)
+	}
+}
+
+func noError() retry.Condition {
+	return func(v interface{}, e error) bool {
+		return e == nil
+	}
+}
+
 //Create creates an security group
 func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
 	out, err := mgr.AWS.EC2Client.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
@@ -79,11 +93,11 @@ func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating security groups")
 	}
-	g, err := mgr.Get(*out.GroupId)
-	if err != nil {
+	res := retry.With(mgr.getGroup(*out.GroupId)).Every(10 * time.Second).For(1 * time.Minute).Until(noError()).Go()
+	if res.LastError != nil {
 		return nil, errors.Wrap(err, "Error creating security groups")
 	}
-	return g, err
+	return res.LastValue.(*api.SecurityGroup), nil
 }
 
 //Delete deletes the security group identified by id
@@ -114,6 +128,8 @@ func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
 //ListByServer list security groups by server
 func (mgr *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGroup, error) {
 	out, err := mgr.AWS.EC2Client.DescribeInstanceAttribute(&ec2.DescribeInstanceAttributeInput{
+		Attribute:  aws.String("groupSet"),
+		DryRun:     nil,
 		InstanceId: &serverID,
 	})
 	if err != nil {
@@ -155,15 +171,15 @@ func (mgr *SecurityGroupManager) AddServer(id string, serverID string) error {
 	if err != nil {
 		return errors.Wrap(err, "error adding security groups to server")
 	}
-	var groupIds []*string
+	var groupIds []string
 	for _, g := range groups {
-		groupIds = append(groupIds, &g.ID)
+		groupIds = append(groupIds, g.ID)
 	}
-	groupIds = append(groupIds, &id)
+	groupIds = append(groupIds, id)
 
 	_, err = mgr.AWS.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-		InstanceId: &id,
-		Groups:     groupIds,
+		Groups:     aws.StringSlice(groupIds),
+		InstanceId: &serverID,
 	})
 	if err != nil {
 		return errors.Wrap(err, "error adding security groups to server")
@@ -177,15 +193,15 @@ func (mgr *SecurityGroupManager) RemoveServer(id string, serverID string) error 
 	if err != nil {
 		return errors.Wrap(err, "error removing security groups from server")
 	}
-	var groupIds []*string
+	var groupIds []string
 	for _, g := range groups {
-		if serverID != g.ID {
-			groupIds = append(groupIds, &g.ID)
+		if id != g.ID {
+			groupIds = append(groupIds, g.ID)
 		}
 	}
 	_, err = mgr.AWS.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-		InstanceId: &id,
-		Groups:     groupIds,
+		InstanceId: &serverID,
+		Groups:     aws.StringSlice(groupIds),
 	})
 	if err != nil {
 		return errors.Wrap(err, "error removing security groups from server")

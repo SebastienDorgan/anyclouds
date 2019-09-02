@@ -44,7 +44,7 @@ func decodeClockSpeed(cs string) float32 {
 		return 0.
 	}
 	if tokens[1] == "Mhz" {
-		return toFloat32(tokens[0]) * 1000.0
+		return toFloat32(tokens[0]) / 1000.0
 	}
 	return toFloat32(tokens[0])
 }
@@ -106,53 +106,143 @@ func readPrice(js []byte) float32 {
 	return plist[0].value
 }
 
+func parseInt(s string) (int64, error) {
+	i := 0
+	for ; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' || s[i] == '+' || s[i] == '-' {
+			break
+		}
+	}
+	start := i
+	if start >= len(s) {
+		return 0, errors.Errorf("%s cannot be converted into int", s)
+	}
+	i++
+	for ; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' {
+			continue
+		} else {
+			break
+		}
+	}
+	stop := i
+
+	if stop-start <= 0 {
+		return 0, errors.Errorf("%s cannot be converted into int", s)
+	}
+	return strconv.ParseInt(s[start:stop], 10, 64)
+}
+
 func toTemplate(price aws.JSONValue) *api.ServerTemplate {
 	js, err := json.Marshal(price)
 
 	if err != nil {
 		return nil
 	}
+
+	instanceName := gjson.GetBytes(js, "product.attributes.instanceType").String()
 	creationDate, _ := time.Parse(time.RFC3339, gjson.GetBytes(js, "publicationDate").String())
 	tpl := &api.ServerTemplate{
-		ID:                gjson.GetBytes(js, "product.sku").String(),
-		Name:              gjson.GetBytes(js, "product.attributes.instanceType").String(),
+		ID:                instanceName, //gjson.GetBytes(js, "product.sku").String(),
+		Name:              instanceName,
 		NumberOfCPUCore:   int(gjson.GetBytes(js, "product.attributes.vcpu").Int()),
 		RAMSize:           decodeMemory(gjson.GetBytes(js, "product.attributes.memory").String()),
 		SystemDiskSize:    20,
 		EphemeralDiskSize: decodeStorage(gjson.GetBytes(js, "product.attributes.storage").String()),
-		CPUSpeed:          decodeClockSpeed(gjson.GetBytes(js, "product.attributes.clockSpeed").String()),
 		CreatedAt:         creationDate,
+		Arch:              "",
+		CPUFrequency:      decodeClockSpeed(gjson.GetBytes(js, "product.attributes.clockSpeed").String()),
+		NetworkSpeed:      0,
+		GPUInfo:           nil,
 		OneDemandPrice:    readPrice(js),
 	}
+
+	instanceFamily := gjson.GetBytes(js, "product.attributes.instanceFamily").String()
+	if instanceFamily == "GPU instance" {
+		tpl.GPUInfo = &api.GPUInfo{
+			Number:       int(gjson.GetBytes(js, "product.attributes.gpu").Int()),
+			NumberOfCore: 0,
+			MemorySize:   0,
+			Type:         "",
+		}
+	}
+	networkPerformance := gjson.GetBytes(js, "product.attributes.networkPerformance").String()
+	speed, err := parseInt(networkPerformance)
+	if err != nil {
+		speed = 0
+	} else {
+		if strings.Contains(networkPerformance, "Gigabit") {
+			speed = speed * 1000
+		}
+	}
+	tpl.NetworkSpeed = int(speed)
+	physicalProcessor := gjson.GetBytes(js, "product.attributes.physicalProcessor").String()
+	processorArchitecture := gjson.GetBytes(js, "product.attributes.processorArchitecture").String()
+	if strings.Contains(physicalProcessor, "Intel") ||
+		strings.Contains(physicalProcessor, "AMD") &&
+			processorArchitecture == "64-bit" {
+		tpl.Arch = api.ArchAmd64
+	} else if physicalProcessor == "AWS Graviton Processor" &&
+		processorArchitecture == "64-bit" {
+		tpl.Arch = api.ArchARM64
+	} else {
+		return nil
+	}
+
+	//filename = fmt.Sprintf("%s_tpl.json", instanceName)
+	//js, _ = json.Marshal(tpl)
+	//_ = ioutil.WriteFile(filename, js, 0644)
+
 	return tpl
+}
+
+func (mgr *ServerTemplateManager) createFilters() []*pricing.Filter {
+	return []*pricing.Filter{
+		{
+			Field: aws.String("ServiceCode"),
+			Type:  aws.String("TERM_MATCH"),
+			Value: aws.String("AmazonEC2"),
+		},
+		{
+			Field: aws.String("location"),
+			Type:  aws.String("TERM_MATCH"),
+			Value: aws.String(mgr.AWS.RegionName),
+		},
+		{
+			Type:  aws.String("TERM_MATCH"),
+			Field: aws.String("capacitystatus"),
+			Value: aws.String("Used"),
+		},
+		{
+			Type:  aws.String("TERM_MATCH"),
+			Field: aws.String("tenancy"),
+			Value: aws.String("Shared"),
+		},
+		{
+			Field: aws.String("preInstalledSw"),
+			Type:  aws.String("TERM_MATCH"),
+			Value: aws.String("NA"),
+		},
+		{
+			Field: aws.String("operatingSystem"),
+			Type:  aws.String("TERM_MATCH"),
+			Value: aws.String("Linux"),
+		},
+		{
+			Type:  aws.String("TERM_MATCH"),
+			Field: aws.String("productFamily"),
+			Value: aws.String("Compute Instance"),
+		},
+	}
 }
 
 //List returns available VM templates
 func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
-	out, err := mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
-		Filters: []*pricing.Filter{
-			{
-				Field: aws.String("ServiceCode"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("AmazonEC2"),
-			},
-			{
-				Field: aws.String("location"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("US East (Ohio)"),
-			},
 
-			{
-				Field: aws.String("preInstalledSw"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("NA"),
-			},
-			{
-				Field: aws.String("operatingSystem"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("Linux"),
-			},
-		},
+	filters := mgr.createFilters()
+	out, err := mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
+		Filters:       filters,
+		MaxResults:    aws.Int64(100),
 		FormatVersion: aws.String("aws_v1"),
 		ServiceCode:   aws.String("AmazonEC2"),
 	})
@@ -160,55 +250,48 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 		return nil, errors.Wrap(err, "Error listing server templates")
 	}
 	var result []api.ServerTemplate
+	result = appendProducts(out, result)
+	for err == nil && out != nil && out.NextToken != nil && out.PriceList != nil && len(out.PriceList) == 100 {
+		out, err = mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
+			Filters:       filters,
+			NextToken:     out.NextToken,
+			FormatVersion: aws.String("aws_v1"),
+			ServiceCode:   aws.String("AmazonEC2"),
+			MaxResults:    aws.Int64(100),
+		})
+		result = appendProducts(out, result)
+	}
+
+	return result, err
+}
+
+func appendProducts(out *pricing.GetProductsOutput, result []api.ServerTemplate) []api.ServerTemplate {
 	for _, price := range out.PriceList {
 		tpl := toTemplate(price)
-		if tpl.RAMSize == 0 {
+		if tpl == nil || tpl.RAMSize == 0 {
 			continue
 		}
 		result = append(result, *tpl)
 
 	}
-	return result, nil
+	return result
 }
 
 //Get returns the template identified by ids
 func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
+	filters := append(mgr.createFilters(), &pricing.Filter{
+		Field: aws.String("instanceType"),
+		Type:  aws.String("TERM_MATCH"),
+		Value: aws.String(id),
+	})
 	out, err := mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
-		Filters: []*pricing.Filter{
-			{
-				Field: aws.String("ServiceCode"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("AmazonEC2"),
-			},
-			{
-				Field: aws.String("location"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("US East (Ohio)"),
-			},
-
-			{
-				Field: aws.String("preInstalledSw"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("NA"),
-			},
-			{
-				Field: aws.String("operatingSystem"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String("Linux"),
-			},
-			{
-				Field: aws.String("sku"),
-				Type:  aws.String("TERM_MATCH"),
-				Value: aws.String(id),
-			},
-		},
+		Filters:       filters,
 		FormatVersion: aws.String("aws_v1"),
 		ServiceCode:   aws.String("AmazonEC2"),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing server templates")
 	}
-
 	for _, price := range out.PriceList {
 		res := toTemplate(price)
 		if res.ID == id {

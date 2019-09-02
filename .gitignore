@@ -11,5 +11,10 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-#Visual Studio Code files
-.vscode
+# Visual Studio Code files
+.vscode/
+# Jetbrains files
+.idea/
+
+#Vendo directory
+vendor/
