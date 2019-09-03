@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/SebastienDorgan/anyclouds/sshutils"
 	"github.com/SebastienDorgan/retry"
@@ -8,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/ssh"
+	"io/ioutil"
 	"strings"
 	"time"
 )
@@ -39,12 +42,14 @@ func WilfulDelete(f func(v string) error, id string) error {
 	return retry.With(DeleteAction(f, id)).Every(20 * time.Second).For(2 * time.Minute).Until(noError()).Go().LastError
 }
 
-func (s *ServerManagerTestSuite) ImportKeyPair(kpm api.KeyPairManager, name string) error {
+func (s *ServerManagerTestSuite) ImportKeyPair(kpm api.KeyPairManager, name string) (*sshutils.KeyPair, error) {
 	kp, err := sshutils.CreateKeyPair(4096)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return kpm.Import("kptest", kp.PublicKey)
+	_ = ioutil.WriteFile("private_key", kp.PrivateKey, 0640)
+	_ = ioutil.WriteFile("public_key", kp.PublicKey, 0640)
+	return kp, kpm.Import("kptest", kp.PublicKey)
 }
 
 func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network *api.Network, subnet *api.Subnet, err error) {
@@ -148,7 +153,7 @@ func (s *ServerManagerTestSuite) FindImage(imm api.ImageManager, tpl *api.Server
 //TestServerTemplateManager Canonical test for ServerTemplateManager implementation
 func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	kpm := s.Prov.GetKeyPairManager()
-	err := s.ImportKeyPair(kpm, "kptest")
+	_, err := s.ImportKeyPair(kpm, "kptest")
 	assert.NoError(s.T(), err)
 
 	netm := s.Prov.GetNetworkManager()
@@ -209,7 +214,7 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 //TestServerTemplateManager Canonical test for ServerTemplateManager implementation
 func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	kpm := s.Prov.GetKeyPairManager()
-	err := s.ImportKeyPair(kpm, "kptest")
+	kp, err := s.ImportKeyPair(kpm, "kptest")
 	assert.NoError(s.T(), err)
 
 	netm := s.Prov.GetNetworkManager()
@@ -245,7 +250,6 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		LeasingType:     api.LeasingTypeSpot,
 	})
 	assert.NoError(s.T(), err)
-
 	assert.Equal(s.T(), server.Name, "test_server")
 	assert.Equal(s.T(), server.ImageID, img.ID)
 	assert.Equal(s.T(), server.KeyPairName, "kptest")
@@ -255,6 +259,28 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	assert.NotEmpty(s.T(), server.PublicIPv4)
 	assert.Equal(s.T(), server.SecurityGroups[0], sg.ID)
 	assert.Equal(s.T(), server.TemplateID, tpl.ID)
+
+	auth, err := kp.AuthMethod()
+	clt, err := sshutils.CreateClient(&sshutils.SSHConfig{
+		Addr: fmt.Sprintf("%s:%d", server.PublicIPv4, 22),
+		ClientConfig: &ssh.ClientConfig{
+			Config:          ssh.Config{},
+			User:            "ubuntu",
+			Auth:            []ssh.AuthMethod{auth},
+			Timeout:         0,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		},
+		Proxy: nil,
+	})
+	println(fmt.Sprintf("%s:%d", server.PublicIPv4, 22))
+	assert.NoError(s.T(), err)
+	session, err := clt.NewSession()
+	assert.NoError(s.T(), err)
+	resp, err := session.Output("hostname")
+	assert.NoError(s.T(), err)
+	assert.NotEmpty(s.T(), resp)
+	fmt.Println("hostname", string(resp))
+	_ = session.Close()
 	err = srvMgr.Delete(server.ID)
 	assert.NoError(s.T(), err)
 	err = kpm.Delete("kptest")
