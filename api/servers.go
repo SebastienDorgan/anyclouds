@@ -27,6 +27,15 @@ const (
 	ServerUnknownState ServerState = "UNKNOWN"
 )
 
+type SpotServerOptions struct {
+	HourlyPrice float32
+	Duration    time.Duration
+}
+
+type ReservedServerOptions struct {
+	Duration time.Duration
+}
+
 //Server defines Server properties
 type Server struct {
 	ID             string
@@ -58,16 +67,16 @@ const (
 
 //CreateServerOptions defines options to use when creating an Server
 type CreateServerOptions struct {
-	Name            string
-	TemplateID      string
-	ImageID         string
-	SecurityGroups  []string
-	Subnets         []string
-	PublicIP        bool
-	BootstrapScript io.Reader
-	KeyPairName     string
-	LeasingType     LeasingType
-	LeaseDuration   time.Duration
+	Name                  string
+	TemplateID            string
+	ImageID               string
+	SecurityGroups        []string
+	Subnets               []string
+	PublicIP              bool
+	BootstrapScript       io.Reader
+	KeyPairName           string
+	SpotServerOptions     *SpotServerOptions
+	ReservedServerOptions *ReservedServerOptions
 }
 
 //ServerManager defines Server management functions an anyclouds provider must provide

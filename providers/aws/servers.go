@@ -44,9 +44,10 @@ func networkInterfaces(options *api.CreateServerOptions) []*ec2.InstanceNetworkI
 }
 
 func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (*string, error) {
-	tpl, err := mgr.AWS.GetTemplateManager().Get(options.TemplateID)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error creating spot instance")
+	var blockDurationInMinutes *int64
+	if options.SpotServerOptions.Duration > 0 {
+		blockDuration := int64(options.SpotServerOptions.Duration / time.Minute)
+		blockDurationInMinutes = aws.Int64(((blockDuration / 60) + 1) * 60)
 	}
 
 	input := &ec2.RequestSpotInstancesInput{
@@ -61,8 +62,9 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (
 			NetworkInterfaces: networkInterfaces(options),
 			UserData:          toString(options.BootstrapScript),
 		},
-		SpotPrice: aws.String(fmt.Sprintf("%f", tpl.OneDemandPrice/4.0)),
-		Type:      aws.String("one-time"),
+		SpotPrice:            aws.String(fmt.Sprintf("%f", options.SpotServerOptions.HourlyPrice)),
+		BlockDurationMinutes: blockDurationInMinutes,
+		Type:                 aws.String("one-time"),
 	}
 
 	out, err := mgr.AWS.EC2Client.RequestSpotInstances(input)
@@ -143,7 +145,7 @@ func (mgr *ServerManager) searchReservedInstanceOffering(options *api.CreateServ
 		IncludeMarketplace:           aws.Bool(false),
 		InstanceTenancy:              nil,
 		InstanceType:                 aws.String(tpl.Name),
-		MaxDuration:                  aws.Int64(int64(options.LeaseDuration / time.Second)),
+		MaxDuration:                  aws.Int64(int64(options.ReservedServerOptions.Duration / time.Second)),
 		MaxInstanceCount:             aws.Int64(1),
 		MaxResults:                   nil,
 		MinDuration:                  nil,
@@ -235,9 +237,12 @@ func (mgr *ServerManager) associatePublicAddress(instanceID string) (string, err
 func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
 	var id *string
 	var err error
-	if options.LeasingType == api.LeasingTypeSpot {
+	if options.SpotServerOptions != nil && options.ReservedServerOptions != nil {
+		return nil, errors.Errorf("error creating server: SpotServerOptions and ReservedServerOptions are exclusive")
+	}
+	if options.SpotServerOptions != nil {
 		id, err = mgr.createSpotInstance(options)
-	} else if options.LeasingType == api.LeasingTypeReserved {
+	} else if options.ReservedServerOptions != nil {
 		id, err = mgr.createReservedInstance(options)
 	} else {
 		id, err = mgr.createOnDemandInstance(options)

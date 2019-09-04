@@ -183,7 +183,6 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 		PublicIP:        true,
 		BootstrapScript: nil,
 		KeyPairName:     "kptest",
-		LeasingType:     api.LeasingTypeOnDemand,
 	})
 	assert.NoError(s.T(), err)
 
@@ -244,7 +243,10 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		PublicIP:        true,
 		BootstrapScript: nil,
 		KeyPairName:     "kptest",
-		LeasingType:     api.LeasingTypeSpot,
+		SpotServerOptions: &api.SpotServerOptions{
+			HourlyPrice: tpl.OneDemandPrice / 4,
+			Duration:    0,
+		},
 	})
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), server.Name, "test_server")

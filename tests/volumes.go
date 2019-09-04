@@ -108,31 +108,25 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 		IPVersion: api.IPVersion4,
 	})
 	assert.NoError(s.T(), err)
-	sg, err := s.getDefaultSecurityGroup()
+	server, err := s.Prov.GetServerManager().Create(&api.CreateServerOptions{
+		Name:            "instance_with_volume",
+		TemplateID:      tpl.ID,
+		ImageID:         img.ID,
+		Subnets:         []string{sn.ID},
+		PublicIP:        true,
+		BootstrapScript: nil,
+		KeyPairName:     "kp_test",
+	})
 	assert.NoError(s.T(), err)
+	sgs, err := s.Prov.GetSecurityGroupManager().ListByServer(server.ID)
 	rule, err := s.Prov.GetSecurityGroupManager().AddRule(&api.SecurityRuleOptions{
-		SecurityGroupID: sg.ID,
+		SecurityGroupID: sgs[0].ID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
 		Protocol:        api.ProtocolTCP,
 		CIDR:            "0.0.0.0/0",
 		Description:     "grant ssh acces",
 	})
-	assert.NoError(s.T(), err)
-	server, err := s.Prov.GetServerManager().Create(&api.CreateServerOptions{
-		Name:       "instance_with_volume",
-		TemplateID: tpl.ID,
-		ImageID:    img.ID,
-		//SecurityGroups:  []string{sg.ID},
-		Subnets:         []string{sn.ID},
-		PublicIP:        true,
-		BootstrapScript: nil,
-		KeyPairName:     "kp_test",
-		LeasingType:     api.LeasingTypeOnDemand,
-		LeaseDuration:   0,
-	})
-	assert.NoError(s.T(), err)
-
 	assert.NoError(s.T(), err)
 	v, err := s.Prov.GetVolumeManager().Create(&api.VolumeOptions{
 		Name:        "my volume",
