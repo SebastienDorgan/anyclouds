@@ -298,6 +298,9 @@ func isDefaultSecurityGroup(sgs []api.SecurityGroup) func(i int) bool {
 }
 
 func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, instanceId string) error {
+	if len(options.SecurityGroups) == 0 {
+		return nil
+	}
 	defaultSecurityGroup, e := mgr.getDefaultSecurityGroup(instanceId)
 	removeDefaultSecurityGroup := e == nil && defaultSecurityGroup != nil
 	for _, sg := range options.SecurityGroups {

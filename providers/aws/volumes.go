@@ -22,7 +22,7 @@ func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
 		return "st1"
 	}
 	if options.MinIOPS <= 16000 && options.Size >= 4 &&
-		((options.MinDataRate <= cMiBToMB(250) && options.Size >= cGiBToGB(334)) || (options.MinDataRate <= cMiBToMB(128))) {
+		((options.MinDataRate <= cMBToMiB(250) && options.Size >= cGBToGiB(334)) || (options.MinDataRate <= cMBToMiB(128))) {
 		return "gp2"
 	}
 
@@ -32,10 +32,10 @@ func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
 //Create creates a volume with options
 func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error) {
 	out, err := mgr.AWS.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
-		AvailabilityZone: aws.String(mgr.AWS.Region),
+		AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
 		DryRun:           aws.Bool(false),
 		Encrypted:        aws.Bool(false),
-		Iops:             nil,
+		Iops:             aws.Int64(options.MinIOPS),
 		KmsKeyId:         nil,
 		Size:             aws.Int64(options.Size),
 		SnapshotId:       nil,
@@ -53,7 +53,14 @@ func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error
 		VolumeType: aws.String(mgr.selectVolumeType(options)),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error creating volume")
+		return nil, errors.Wrapf(err, "error creating volume")
+	}
+	err = mgr.AWS.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
+		VolumeIds: []*string{out.VolumeId},
+	})
+	if err != nil {
+		_ = mgr.Delete(*out.VolumeId)
+		return nil, errors.Wrapf(err, "error creating volume")
 	}
 	return volume(out), nil
 }
@@ -64,7 +71,7 @@ func (mgr *VolumeManager) Delete(id string) error {
 		DryRun:   aws.Bool(false),
 		VolumeId: aws.String(id),
 	})
-	return errors.Wrapf(err, "Error deleting volume %s", id)
+	return errors.Wrapf(err, "error deleting volume %s", id)
 }
 
 func name(tags []*ec2.Tag) string {
@@ -76,6 +83,14 @@ func name(tags []*ec2.Tag) string {
 	}
 	return ""
 
+}
+
+func cMBToMiB(v int64) int64 {
+	return int64(float64(v) / 1.04858)
+}
+
+func cGBToGiB(v int64) int64 {
+	return int64(float64(v) / 1.07374)
 }
 
 func cMiBToMB(v int64) int64 {
@@ -92,14 +107,16 @@ func volume(v *ec2.Volume) *api.Volume {
 		if *v.Size <= cGiBToGB(334) {
 			dataRate = cMiBToMB(128)
 		} else {
-			dataRate = cMiBToMB(256)
+			dataRate = cMiBToMB(250)
 		}
 	} else if *v.VolumeType == "st1" {
 		dataRate = 500
 	} else if *v.VolumeType == "sc1" {
 		dataRate = 250
-	} else if *v.VolumeType == "sc1" {
-		dataRate = cMiBToMB(500)
+	} else if *v.VolumeType == "io1" {
+		//TODO see how to manage non Nitro based instance
+		//https://docs.aws.amazon.com/fr_fr/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
+		dataRate = cMiBToMB(1000)
 	}
 	return &api.Volume{
 		ID:       *v.VolumeId,
@@ -127,7 +144,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 		VolumeIds:  nil,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error listing volumes")
+		return nil, errors.Wrapf(err, "error listing volumes")
 	}
 	var volumes []api.Volume
 	for _, res := range out.Volumes {
@@ -144,7 +161,7 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 			{
 				Name: aws.String("availability-zone"),
 				Values: []*string{
-					aws.String(mgr.AWS.Region),
+					aws.String(mgr.AWS.AvailabilityZone),
 				},
 			},
 		},
@@ -153,10 +170,10 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 		VolumeIds:  []*string{aws.String(id)},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error listing volumes")
+		return nil, errors.Wrapf(err, "error listing volumes")
 	}
 	if out.Volumes != nil {
-		return nil, errors.Errorf("Error listing volumes")
+		return nil, errors.Errorf("error listing volumes")
 	}
 
 	return volume(out.Volumes[0]), nil
@@ -171,8 +188,9 @@ func (mgr *VolumeManager) Attach(volumeID string, serverID string, device string
 		VolumeId:   aws.String(volumeID),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error attaching volume %s to server %s on device %s", volumeID, serverID, device)
+		return nil, errors.Wrapf(err, "error attaching volume %s to server %s on device %s", volumeID, serverID, device)
 	}
+
 	return attachment(out), nil
 
 }
@@ -195,9 +213,13 @@ func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) e
 		InstanceId: aws.String(serverID),
 		VolumeId:   aws.String(volumeID),
 	})
-
-	return errors.Wrapf(err, "Error detaching volume %s from server %s", volumeID, serverID)
-
+	if err != nil {
+		return errors.Wrapf(err, "error detaching volume %s from server %s", volumeID, serverID)
+	}
+	err = mgr.AWS.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
+		VolumeIds: []*string{&volumeID},
+	})
+	return errors.Wrapf(err, "error detaching volume %s from server %s", volumeID, serverID)
 }
 
 //Attachment returns the attachment between a volume and an Server
@@ -208,7 +230,7 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 			{
 				Name: aws.String("availability-zone"),
 				Values: []*string{
-					aws.String(mgr.AWS.Region),
+					aws.String(mgr.AWS.AvailabilityZone),
 				},
 			},
 		},
@@ -217,10 +239,10 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 		VolumeIds:  []*string{aws.String(volumeID)},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error getting attachment between volume %s and server %s", volumeID, serverID)
+		return nil, errors.Wrapf(err, "error getting attachment between volume %s and server %s", volumeID, serverID)
 	}
 	if out.Volumes == nil {
-		return nil, errors.Errorf("Error getting attachment between volume %s and server %s", volumeID, serverID)
+		return nil, errors.Errorf("error getting attachment between volume %s and server %s", volumeID, serverID)
 	}
 
 	if out.Volumes[0].Attachments == nil {
@@ -234,7 +256,7 @@ func (mgr *VolumeManager) Attachments(serverID string) (api.VolumeAttachmentSlic
 	var atts api.VolumeAttachmentSlice
 	volumes, err := mgr.List()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error listing attachments of server %s", serverID)
+		return nil, errors.Wrapf(err, "error listing attachments of server %s", serverID)
 	}
 	for _, v := range volumes {
 		att, _ := mgr.Attachment(v.ID, serverID)
@@ -260,7 +282,7 @@ func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume,
 		VolumeType: aws.String(vType),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error modifying volume %s", options.ID)
+		return nil, errors.Wrapf(err, "error modifying volume %s", options.ID)
 	}
 	return mgr.Get(*out.VolumeModification.VolumeId)
 }
