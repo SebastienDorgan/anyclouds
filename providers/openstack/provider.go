@@ -173,6 +173,8 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.VolumeManager.OpenStack = p
 	p.SecurityGroupManager.OpenStack = p
 	p.KeyPairManager.OpenStack = p
+
+	p.NetworkManager.PublicNetworkName = "Ext-Net"
 	return nil
 }
 

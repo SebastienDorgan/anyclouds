@@ -33,7 +33,8 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 	}
 	return &api.Network{
 		ID:   network.ID,
-		CIDR: network.Name,
+		Name: network.Name,
+		CIDR: network.Description,
 	}, nil
 }
 

@@ -57,6 +57,7 @@ type NetworkManagerTestSuite struct {
 //TestSubnets canonical tests for subnets
 func (s *NetworkManagerTestSuite) TestSubnets() {
 	n, err := s.Mgr.CreateNetwork(&api.NetworkOptions{
+		Name: "test_network",
 		CIDR: "10.0.0.0/16",
 	})
 	assert.NoError(s.T(), err)

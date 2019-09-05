@@ -37,7 +37,11 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 
 //Get returns the image identified by id
 func (mgr *ImageManager) Get(id string) (*api.Image, error) {
-	img, err := images.Get(mgr.OpenStack.Compute, id).Extract()
+	res := images.Get(mgr.OpenStack.Compute, id)
+	//img, err := images.Get(mgr.OpenStack.Compute, id).Extract()
+	str := res.PrettyPrintJSON()
+	println(str)
+	img, err := res.Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error getting image: %s")
 	}
