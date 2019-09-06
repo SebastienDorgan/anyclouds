@@ -45,7 +45,7 @@ type Server struct {
 	SecurityGroups []string
 	PrivateIPs     map[IPVersion][]string
 	PublicIPv4     string
-	PublicIPv6     string
+	AccessIPv6     string
 	State          ServerState
 	CreatedAt      time.Time
 	KeyPairName    string

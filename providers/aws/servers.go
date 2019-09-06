@@ -257,15 +257,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating reserved instance")
 	}
-	_, err = mgr.AWS.EC2Client.CreateTags(&ec2.CreateTagsInput{
-		Resources: []*string{id},
-		Tags: []*ec2.Tag{
-			{
-				Key:   aws.String("name"),
-				Value: aws.String(options.Name),
-			},
-		},
-	})
+	err = mgr.AWS.AddTags(*id, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating reserved instance")
@@ -349,7 +341,7 @@ func (mgr *ServerManager) Delete(id string) error {
 	releaseAddress := false
 	if err == nil {
 		//the server is associated to an elastic ip
-		if len(srv.PublicIPv4) > 0 || len(srv.PublicIPv6) > 0 {
+		if len(srv.PublicIPv4) > 0 || len(srv.AccessIPv6) > 0 {
 			releaseAddress = true
 		}
 	}
@@ -364,6 +356,9 @@ func (mgr *ServerManager) Delete(id string) error {
 		}
 
 	}
+	_ = mgr.AWS.EC2Client.WaitUntilInstanceTerminated(&ec2.DescribeInstancesInput{
+		InstanceIds: []*string{aws.String(id)},
+	})
 	return nil
 }
 
@@ -383,7 +378,7 @@ func (mgr *ServerManager) releaseAddress(srv *api.Server) error {
 		return errors.Errorf("error releasing elastic ip of instance %s", srv.ID)
 	}
 	for _, addr := range out.Addresses {
-		if *addr.PublicIp != srv.PublicIPv4 && *addr.PublicIp != srv.PublicIPv6 {
+		if *addr.PublicIp != srv.PublicIPv4 && *addr.PublicIp != srv.AccessIPv6 {
 			continue
 		}
 		_, err := mgr.AWS.EC2Client.DisassociateAddress(&ec2.DisassociateAddressInput{

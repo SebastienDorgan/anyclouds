@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"io/ioutil"
 )
 
 type VolumeManagerTestSuite struct {
@@ -20,8 +19,6 @@ func (s *VolumeManagerTestSuite) ImportKeyPair(name string) (*sshutils.KeyPair, 
 	if err != nil {
 		return nil, err
 	}
-	_ = ioutil.WriteFile("private_key", kp.PrivateKey, 0640)
-	_ = ioutil.WriteFile("public_key", kp.PublicKey, 0640)
 	return kp, s.Prov.GetKeyPairManager().Import(name, kp.PublicKey)
 }
 

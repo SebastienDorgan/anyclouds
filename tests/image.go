@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ func (s *ImageManagerTestSuite) TestImageManager() {
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), images)
 	for _, img := range images {
+		fmt.Println(img.Name)
 		image, err := s.Mgr.Get(img.ID)
 		assert.NoError(s.T(), err)
 		assert.True(s.T(), reflect.DeepEqual(img, *image))

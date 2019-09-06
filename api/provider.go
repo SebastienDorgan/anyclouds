@@ -12,4 +12,5 @@ type Provider interface {
 	GetSecurityGroupManager() SecurityGroupManager
 	GetServerManager() ServerManager
 	GetVolumeManager() VolumeManager
+	GetPublicIpAddressManager() PublicIPAddressManager
 }

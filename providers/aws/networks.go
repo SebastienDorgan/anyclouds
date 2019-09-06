@@ -25,18 +25,7 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 		return nil, errors.Wrapf(err, "error creating network %s", options.Name)
 	}
 
-	_, err = mgr.AWS.EC2Client.CreateTags(&ec2.CreateTagsInput{
-		DryRun: aws.Bool(false),
-		Resources: []*string{
-			out.Vpc.VpcId,
-		},
-		Tags: []*ec2.Tag{
-			{
-				Key:   aws.String("name"),
-				Value: aws.String(options.Name),
-			},
-		},
-	})
+	err = mgr.AWS.AddTags(*out.Vpc.VpcId, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.DeleteNetwork(*out.Vpc.VpcId)
 		return nil, errors.Wrapf(err, "Error creating network %s", options.Name)
@@ -215,18 +204,8 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating subnet")
 	}
-	_, err = mgr.AWS.EC2Client.CreateTags(&ec2.CreateTagsInput{
-		DryRun: aws.Bool(false),
-		Resources: []*string{
-			out.Subnet.SubnetId,
-		},
-		Tags: []*ec2.Tag{
-			{
-				Key:   aws.String("name"),
-				Value: aws.String(options.Name),
-			},
-		},
-	})
+
+	err = mgr.AWS.AddTags(*out.Subnet.SubnetId, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.DeleteSubnet(*out.Subnet.SubnetId)
 		return nil, errors.Wrapf(err, "Error creating subnet %s", options.Name)

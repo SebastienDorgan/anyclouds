@@ -48,19 +48,20 @@ func (cfg *Config) IsExpired() bool {
 
 //Provider AWS provider
 type Provider struct {
-	EC2Client            *ec2.EC2
-	OpsWorksClient       *opsworks.OpsWorks
-	PricingClient        *pricing.Pricing
-	KeyPairManager       *KeyPairManager
-	ImagesManager        *ImageManager
-	NetworkManager       *NetworkManager
-	TemplateManager      *ServerTemplateManager
-	ServerManager        *ServerManager
-	SecurityGroupManager *SecurityGroupManager
-	VolumeManager        *VolumeManager
-	Region               string
-	RegionName           string
-	AvailabilityZone     string
+	EC2Client              *ec2.EC2
+	OpsWorksClient         *opsworks.OpsWorks
+	PricingClient          *pricing.Pricing
+	KeyPairManager         *KeyPairManager
+	ImagesManager          *ImageManager
+	NetworkManager         *NetworkManager
+	TemplateManager        *ServerTemplateManager
+	ServerManager          *ServerManager
+	SecurityGroupManager   *SecurityGroupManager
+	VolumeManager          *VolumeManager
+	PublicIPAddressManager *PublicIPAddressManager
+	Region                 string
+	RegionName             string
+	AvailabilityZone       string
 }
 
 func getEC2Config(cfg *Config) *aws.Config {
@@ -109,6 +110,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.VolumeManager = &VolumeManager{AWS: p}
 	p.SecurityGroupManager = &SecurityGroupManager{AWS: p}
 	p.KeyPairManager = &KeyPairManager{AWS: p}
+	p.PublicIPAddressManager = &PublicIPAddressManager{AWS: p}
 	p.Region = cfg.Region
 	p.RegionName = v.GetString("RegionName")
 	p.AvailabilityZone = v.GetString("AvailabilityZone")
@@ -154,4 +156,8 @@ func (p *Provider) GetServerManager() api.ServerManager {
 //GetVolumeManager returns aws OpenStack VolumeManager
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return p.VolumeManager
+}
+
+func (p *Provider) GetPublicIpAddressManager() api.PublicIPAddressManager {
+	return p.PublicIPAddressManager
 }

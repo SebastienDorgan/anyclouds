@@ -68,15 +68,15 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 	}
 	imgsRHEL, err := mgr.search("309956199498", "RHEL-?.?_HVM_GA*")
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing image")
+		return nil, errors.Wrap(err, "error listing image")
 	}
 	imgsDebian, err := mgr.search("379101102735", "debian-*")
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing image")
+		return nil, errors.Wrap(err, "error listing image")
 	}
 	imgsCentOS, err := mgr.search("410186602215", "CentOS*")
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing image")
+		return nil, errors.Wrap(err, "error listing image")
 	}
 
 	var result []api.Image

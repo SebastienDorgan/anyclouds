@@ -199,7 +199,7 @@ func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 		TemplateID:     flavorID,
 		State:          state(srv.Status),
 		PublicIPv4:     srv.AccessIPv4,
-		PublicIPv6:     srv.AccessIPv6,
+		AccessIPv6:     srv.AccessIPv6,
 		PrivateIPs:     addresses(srv.Addresses),
 		Name:           srv.Name,
 		CreatedAt:      srv.Created,

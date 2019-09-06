@@ -64,7 +64,7 @@ type Config struct {
 	//Openstack region (data center) where the infrastructure will be created
 	Region string `json:"region,omitempty"`
 
-	//FloatingIPPool name of the floating IP pool
+	//PublicIPPool name of the floating IP pool
 	//Necessary only if UseFloatingIP is true
 	FloatingIPPool string `json:"floating_ip_pool,omitempty"`
 }
@@ -98,18 +98,19 @@ func ProviderError(err error) error {
 
 //Provider OpenStack provider
 type Provider struct {
-	client               *gc.ProviderClient
-	Compute              *gc.ServiceClient
-	Network              *gc.ServiceClient
-	Volume               *gc.ServiceClient
-	Name                 string
-	KeyPairManager       KeyPairManager
-	ImagesManager        ImageManager
-	NetworkManager       NetworkManager
-	TemplateManager      ServerTemplateManager
-	ServerManager        ServerManager
-	SecurityGroupManager SecurityGroupManager
-	VolumeManager        VolumeManager
+	client                 *gc.ProviderClient
+	Compute                *gc.ServiceClient
+	Network                *gc.ServiceClient
+	Volume                 *gc.ServiceClient
+	Name                   string
+	KeyPairManager         KeyPairManager
+	ImagesManager          ImageManager
+	NetworkManager         NetworkManager
+	TemplateManager        ServerTemplateManager
+	ServerManager          ServerManager
+	SecurityGroupManager   SecurityGroupManager
+	VolumeManager          VolumeManager
+	PublicIPAddressManager PublicIPAddressManager
 }
 
 //Init initialize OpenStack Provider
@@ -173,6 +174,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.VolumeManager.OpenStack = p
 	p.SecurityGroupManager.OpenStack = p
 	p.KeyPairManager.OpenStack = p
+	p.PublicIPAddressManager.OpenStack = p
 
 	p.NetworkManager.PublicNetworkName = "Ext-Net"
 	return nil
@@ -211,4 +213,7 @@ func (p *Provider) GetServerManager() api.ServerManager {
 //GetVolumeManager returns an OpenStack VolumeManager
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return &p.VolumeManager
+}
+func (p *Provider) GetPublicIpAddressManager() api.PublicIPAddressManager {
+	return &p.PublicIPAddressManager
 }
