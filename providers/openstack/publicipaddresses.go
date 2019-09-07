@@ -1,13 +1,12 @@
 package openstack
 
 import (
-	"encoding/binary"
 	"github.com/SebastienDorgan/anyclouds/api"
+	"github.com/SebastienDorgan/anyclouds/iputils"
 	"github.com/SebastienDorgan/talgo"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/pkg/errors"
-	"net"
 )
 
 //NetworkManager defines networking functions a anyclouds provider must provide
@@ -15,18 +14,7 @@ type PublicIPAddressManager struct {
 	OpenStack *Provider
 }
 
-func ipToUin32(ip *net.IP) uint32 {
-	return binary.BigEndian.Uint32(ip.To4())
-}
-
-func uint32toIP(ui uint32) net.IP {
-	ip := net.IPv4(0, 0, 0, 0)
-	binary.BigEndian.PutUint32(ip, ui)
-	return ip
-}
-
 func (mgr *PublicIPAddressManager) ListAvailablePools() ([]api.PublicIPPool, error) {
-
 	snets, err := mgr.OpenStack.GetNetworkManager().ListSubnets(mgr.OpenStack.ExternalNetworkID)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error listing available public ip pools")
@@ -36,22 +24,16 @@ func (mgr *PublicIPAddressManager) ListAvailablePools() ([]api.PublicIPPool, err
 		if sn.IPVersion == api.IPVersion6 {
 			continue
 		}
-		ip, ipNet, err := net.ParseCIDR(sn.CIDR)
+		r, err := iputils.GetRange(sn.CIDR)
 		if err != nil {
 			return nil, errors.Wrap(ProviderError(err), "error listing available public ip pools")
 		}
-		uip := ipToUin32(&ip) + 1 //Firts ip of the subnet
-		firstIP := uint32toIP(uip)
-		//increment until uip+1 not in subnet
-		for ; ipNet.Contains(uint32toIP(uip + 1)); uip++ {
-		}
-		lastIP := uint32toIP(uip)
 		pools = append(pools, api.PublicIPPool{
 			ID: sn.ID,
 			Ranges: []api.AddressRange{
 				{
-					FirstAddress: firstIP.String(),
-					LastAddress:  lastIP.String(),
+					FirstAddress: r.FirstIP.String(),
+					LastAddress:  r.LastIP.String(),
 				},
 			},
 		})

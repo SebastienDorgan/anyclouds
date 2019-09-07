@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.17.14
 	github.com/gophercloud/gophercloud v0.4.0
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/magiconair/properties v1.8.0
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/afero v1.2.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
