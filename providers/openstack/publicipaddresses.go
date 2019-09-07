@@ -20,7 +20,7 @@ func ipToUin32(ip *net.IP) uint32 {
 }
 
 func uint32toIP(ui uint32) net.IP {
-	ip := net.IPv4(0xffff, 0xffff, 0xffff, 0xffff)
+	ip := net.IPv4(0, 0, 0, 0)
 	binary.BigEndian.PutUint32(ip, ui)
 	return ip
 }
