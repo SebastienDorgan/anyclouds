@@ -1,6 +1,7 @@
 package openstack
 
 import (
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"io"
 
 	"github.com/SebastienDorgan/anyclouds/api"
@@ -111,6 +112,8 @@ type Provider struct {
 	SecurityGroupManager   SecurityGroupManager
 	VolumeManager          VolumeManager
 	PublicIPAddressManager PublicIPAddressManager
+	ExternalNetworkName    string
+	ExternalNetworkID      string
 }
 
 //Init initialize OpenStack Provider
@@ -175,9 +178,10 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.SecurityGroupManager.OpenStack = p
 	p.KeyPairManager.OpenStack = p
 	p.PublicIPAddressManager.OpenStack = p
-
-	p.NetworkManager.PublicNetworkName = "Ext-Net"
-	return nil
+	p.ExternalNetworkName = "Ext-Net"
+	extNetID, err := networks.IDFromName(p.Network, p.ExternalNetworkName)
+	p.ExternalNetworkID = extNetID
+	return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 }
 
 //GetKeyPairManager returns aws KeyPairManager

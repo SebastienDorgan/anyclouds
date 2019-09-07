@@ -12,8 +12,7 @@ import (
 
 //NetworkManager defines networking functions a anyclouds provider must provide
 type NetworkManager struct {
-	OpenStack         *Provider
-	PublicNetworkName string
+	OpenStack *Provider
 }
 
 //CreateNetwork creates a network
@@ -97,7 +96,7 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
 
 func (mgr *NetworkManager) createRouter(networkID string) (*routers.Router, error) {
 	up := true
-	netID, err := networks.IDFromName(mgr.OpenStack.Network, mgr.PublicNetworkName)
+	netID, err := networks.IDFromName(mgr.OpenStack.Network, mgr.OpenStack.ExternalNetworkName)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error creating subnet")
 	}
