@@ -1,7 +1,6 @@
 package aws
 
 import (
-	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
@@ -20,22 +19,6 @@ func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 		PublicKeyMaterial: publicKey,
 	})
 	return errors.Wrap(err, "Error loading key pair")
-}
-
-//List available keys
-func (mgr *KeyPairManager) List() ([]api.KeyPair, error) {
-	out, err := mgr.AWS.EC2Client.DescribeKeyPairs(nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error listing key pair")
-	}
-	var result []api.KeyPair
-	for _, kp := range out.KeyPairs {
-		result = append(result, api.KeyPair{
-			Name:        *kp.KeyName,
-			Fingerprint: *kp.KeyFingerprint,
-		})
-	}
-	return result, nil
 }
 
 //Delete a key pair

@@ -35,7 +35,7 @@ func TestPublicAddresses(t *testing.T) {
 
 	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(t, err)
-	err = prov.GetKeyPairManager().Import("test_kp", kp.PublicKey)
+	kp, err = sshutils.CreateKeyPair(4096)
 	assert.NoError(t, err)
 	net, err := prov.GetNetworkManager().CreateNetwork(&api.NetworkOptions{
 		CIDR: "10.0.0.0/16",
@@ -97,7 +97,7 @@ func TestPublicAddresses(t *testing.T) {
 		Subnets:         []string{snet.ID},
 		PublicIP:        false,
 		BootstrapScript: nil,
-		KeyPairName:     "test_kp",
+		KeyPair:         kp,
 	})
 	assert.NotNil(t, srv)
 	if srv != nil {
@@ -118,8 +118,6 @@ func TestPublicAddresses(t *testing.T) {
 	}
 
 	err = prov.GetNetworkManager().DeleteSubnet(snet.ID)
-	assert.NoError(t, err)
-	err = prov.GetKeyPairManager().Delete("test_kp")
 	assert.NoError(t, err)
 	err = prov.GetSecurityGroupManager().Delete(sg.ID)
 	assert.NoError(t, err)

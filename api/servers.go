@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/SebastienDorgan/anyclouds/sshutils"
 	"io"
 	"time"
 )
@@ -74,7 +75,7 @@ type CreateServerOptions struct {
 	Subnets               []string
 	PublicIP              bool
 	BootstrapScript       io.Reader
-	KeyPairName           string
+	KeyPair               *sshutils.KeyPair
 	SpotServerOptions     *SpotServerOptions
 	ReservedServerOptions *ReservedServerOptions
 }

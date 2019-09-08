@@ -14,14 +14,6 @@ type VolumeManagerTestSuite struct {
 	Prov api.Provider
 }
 
-func (s *VolumeManagerTestSuite) ImportKeyPair(name string) (*sshutils.KeyPair, error) {
-	kp, err := sshutils.CreateKeyPair(4096)
-	if err != nil {
-		return nil, err
-	}
-	return kp, s.Prov.GetKeyPairManager().Import(name, kp.PublicKey)
-}
-
 func (s *VolumeManagerTestSuite) SelectTemplate() (*api.ServerTemplate, error) {
 	cpu := 4
 	ram := 15000
@@ -94,7 +86,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.NoError(s.T(), err)
 	img, err := s.FindImage(tpl)
 	assert.NoError(s.T(), err)
-	_, err = s.ImportKeyPair("kp_test")
+	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
 	n, err := s.getDefaultNetwork()
 	assert.NoError(s.T(), err)
@@ -112,7 +104,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 		Subnets:         []string{sn.ID},
 		PublicIP:        true,
 		BootstrapScript: nil,
-		KeyPairName:     "kp_test",
+		KeyPair:         kp,
 	})
 	assert.NoError(s.T(), err)
 	sgs, err := s.Prov.GetSecurityGroupManager().ListByServer(server.ID)
@@ -142,8 +134,6 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	err = s.Prov.GetSecurityGroupManager().DeleteRule(rule.ID)
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetServerManager().Delete(server.ID)
-	assert.NoError(s.T(), err)
-	err = s.Prov.GetKeyPairManager().Delete("kp_test")
 	assert.NoError(s.T(), err)
 	err = WilfulDelete(s.Prov.GetNetworkManager().DeleteSubnet, sn.ID)
 	assert.NoError(s.T(), err)

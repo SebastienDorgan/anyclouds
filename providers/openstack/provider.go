@@ -184,11 +184,6 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
 }
 
-//GetKeyPairManager returns aws KeyPairManager
-func (p *Provider) GetKeyPairManager() api.KeyPairManager {
-	return &p.KeyPairManager
-}
-
 //GetNetworkManager returns an OpenStack NetworkManager
 func (p *Provider) GetNetworkManager() api.NetworkManager {
 	return &p.NetworkManager

@@ -2,16 +2,16 @@ package openstack
 
 import (
 	"fmt"
-	"github.com/SebastienDorgan/anyclouds/providers"
-	"time"
-
 	"github.com/SebastienDorgan/anyclouds/api"
+	"github.com/SebastienDorgan/anyclouds/providers"
 	"github.com/SebastienDorgan/retry"
+	"github.com/google/uuid"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/pkg/errors"
+	"time"
 )
 
 //ServerManager defines Server management functions an anyclouds provider must provide
@@ -53,7 +53,7 @@ func (mgr *ServerManager) networks(subnets []string) ([]servers.Network, error) 
 	}
 	return nets, nil
 }
-func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*servers.Server, error) {
+func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*api.Server, error) {
 	nets, err := mgr.networks(options.Subnets)
 	if err != nil {
 		return nil, err
@@ -65,30 +65,40 @@ func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*serve
 		SecurityGroups: options.SecurityGroups,
 		Networks:       nets,
 	}
-
-	return servers.Create(mgr.OpenStack.Compute, createServerOpts{
+	keyId := uuid.New().String()
+	err = mgr.OpenStack.KeyPairManager.Import(keyId, options.KeyPair.PublicKey)
+	defer func() { _ = mgr.OpenStack.KeyPairManager.Delete(keyId) }()
+	if err != nil {
+		return nil, ProviderError(err)
+	}
+	srv, err := servers.Create(mgr.OpenStack.Compute, createServerOpts{
 		CreateOpts: opts,
-		KeyName:    options.KeyPairName,
+		KeyName:    "key",
 	}).Extract()
+	if err != nil {
+		return nil, ProviderError(err)
+	}
+	s, err := providers.WaitUntilServerReachStableState(mgr, srv.ID)
+	if s != nil && s.State != api.ServerReady {
+		_ = mgr.Delete(s.ID)
+		return nil, errors.Errorf("server in unexpected state: %s", s.State)
+	}
+	if s == nil {
+		return nil, errors.Errorf("server in unexpected state: %s", "nil")
+	}
+
+	return s, nil
 }
 
 //Create creates an Server with options
 func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
 	srv, err := mgr.createServer(options)
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error creating server")
-	}
-	s, err := providers.WaitUntilServerReachStableState(mgr, srv.ID)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error creating server")
-	}
-
-	if s.State != api.ServerReady {
-		return nil, errors.Wrap(errors.Errorf("Server in unexpected state: %s", s.State), "Error creating server")
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	//if no public IP is requested the server is ready to be used
 	if !options.PublicIP {
-		return s, nil
+		return srv, nil
 	}
 	fip, err := floatingips.Create(mgr.OpenStack.Compute, &floatingips.CreateOpts{}).Extract()
 	if err != nil {

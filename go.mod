@@ -11,6 +11,7 @@ require (
 	github.com/SebastienDorgan/retry v0.0.0-20190902110557-59863ce7f436
 	github.com/SebastienDorgan/talgo v0.0.0-20190901103057-247d33849fe0
 	github.com/aws/aws-sdk-go v1.17.14
+	github.com/google/uuid v1.1.1
 	github.com/gophercloud/gophercloud v0.4.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pkg/errors v0.8.1

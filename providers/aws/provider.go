@@ -123,11 +123,6 @@ func (p *Provider) Name() string {
 	return "AWS"
 }
 
-//GetKeyPairManager returns aws KeyPairManager
-func (p *Provider) GetKeyPairManager() api.KeyPairManager {
-	return p.KeyPairManager
-}
-
 //GetNetworkManager returns aws NetworkManager
 func (p *Provider) GetNetworkManager() api.NetworkManager {
 	return p.NetworkManager

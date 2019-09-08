@@ -1,7 +1,6 @@
 package openstack
 
 import (
-	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/pkg/errors"
 )
@@ -21,26 +20,6 @@ func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 		return errors.Wrap(ProviderError(err), "Error listing images")
 	}
 	return nil
-}
-
-//List available keys
-func (mgr *KeyPairManager) List() ([]api.KeyPair, error) {
-	pages, err := keypairs.List(mgr.OpenStack.Compute).AllPages()
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing images")
-	}
-	kps, err := keypairs.ExtractKeyPairs(pages)
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing images")
-	}
-	var result []api.KeyPair
-	for _, kp := range kps {
-		result = append(result, api.KeyPair{
-			Name:        kp.Name,
-			Fingerprint: kp.Fingerprint,
-		})
-	}
-	return result, nil
 }
 
 //Delete a key pair

@@ -41,14 +41,6 @@ func WilfulDelete(f func(v string) error, id string) error {
 	return retry.With(DeleteAction(f, id)).Every(20 * time.Second).For(2 * time.Minute).Until(noError()).Go().LastError
 }
 
-func (s *ServerManagerTestSuite) ImportKeyPair(kpm api.KeyPairManager, name string) (*sshutils.KeyPair, error) {
-	kp, err := sshutils.CreateKeyPair(4096)
-	if err != nil {
-		return nil, err
-	}
-	return kp, kpm.Import("kptest", kp.PublicKey)
-}
-
 func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network *api.Network, subnet *api.Subnet, err error) {
 	network, err = netm.CreateNetwork(&api.NetworkOptions{
 		CIDR: "10.0.0.0/16",
@@ -149,8 +141,7 @@ func (s *ServerManagerTestSuite) FindImage(imm api.ImageManager, tpl *api.Server
 
 //TestServerTemplateManager Canonical test for ServerTemplateManager implementation
 func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
-	kpm := s.Prov.GetKeyPairManager()
-	_, err := s.ImportKeyPair(kpm, "kptest")
+	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
 
 	netm := s.Prov.GetNetworkManager()
@@ -182,7 +173,7 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 		},
 		PublicIP:        true,
 		BootstrapScript: nil,
-		KeyPairName:     "kptest",
+		KeyPair:         kp,
 	})
 	assert.NoError(s.T(), err)
 
@@ -197,8 +188,6 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	assert.Equal(s.T(), server.TemplateID, tpl.ID)
 	err = srvMgr.Delete(server.ID)
 	assert.NoError(s.T(), err)
-	err = kpm.Delete("kptest")
-	assert.NoError(s.T(), err)
 	err = WilfulDelete(sgm.Delete, sg.ID)
 	assert.NoError(s.T(), err)
 	err = WilfulDelete(netm.DeleteSubnet, subnet.ID)
@@ -209,8 +198,7 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 
 //TestServerTemplateManager Canonical test for ServerTemplateManager implementation
 func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
-	kpm := s.Prov.GetKeyPairManager()
-	kp, err := s.ImportKeyPair(kpm, "kptest")
+	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
 
 	netm := s.Prov.GetNetworkManager()
@@ -242,7 +230,7 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		},
 		PublicIP:        true,
 		BootstrapScript: nil,
-		KeyPairName:     "kptest",
+		KeyPair:         kp,
 		SpotServerOptions: &api.SpotServerOptions{
 			HourlyPrice: tpl.OneDemandPrice / 4,
 			Duration:    0,
@@ -281,8 +269,6 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	fmt.Println("hostname", string(resp))
 	_ = session.Close()
 	err = srvMgr.Delete(server.ID)
-	assert.NoError(s.T(), err)
-	err = kpm.Delete("kptest")
 	assert.NoError(s.T(), err)
 	err = WilfulDelete(sgm.Delete, sg.ID)
 	assert.NoError(s.T(), err)

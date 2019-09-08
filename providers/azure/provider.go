@@ -90,10 +90,6 @@ func getAuthorizerForResource(config *Config) (autorest.Authorizer, error) {
 	}
 }
 
-func (p *Provider) GetKeyPairManager() api.KeyPairManager {
-	panic("implement me")
-}
-
 func (p *Provider) GetNetworkManager() api.NetworkManager {
 	panic("implement me")
 }

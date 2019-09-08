@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/SebastienDorgan/retry"
+	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"sort"
@@ -43,7 +44,7 @@ func networkInterfaces(options *api.CreateServerOptions) []*ec2.InstanceNetworkI
 	return out
 }
 
-func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (*string, error) {
+func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions, keyName string) (*string, error) {
 	var blockDurationInMinutes *int64
 	if options.SpotServerOptions.Duration > 0 {
 		blockDuration := int64(options.SpotServerOptions.Duration / time.Minute)
@@ -55,7 +56,7 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions) (
 		LaunchSpecification: &ec2.RequestSpotLaunchSpecification{
 			ImageId:      aws.String(options.ImageID),
 			InstanceType: aws.String(options.TemplateID),
-			KeyName:      aws.String(options.KeyPairName),
+			KeyName:      aws.String(keyName),
 			Placement: &ec2.SpotPlacement{
 				AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
 			},
@@ -107,12 +108,12 @@ func toString(reader io.Reader) *string {
 	return aws.String(string(b))
 }
 
-func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOptions) (*string, error) {
+func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOptions, keyName string) (*string, error) {
 
 	out, err := mgr.AWS.EC2Client.RunInstances(&ec2.RunInstancesInput{
 		ImageId:           aws.String(options.ImageID),
 		InstanceType:      aws.String(options.TemplateID),
-		KeyName:           aws.String(options.KeyPairName),
+		KeyName:           aws.String(keyName),
 		NetworkInterfaces: networkInterfaces(options),
 		UserData:          toString(options.BootstrapScript),
 		Placement: &ec2.Placement{
@@ -240,38 +241,45 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	if options.SpotServerOptions != nil && options.ReservedServerOptions != nil {
 		return nil, errors.Errorf("error creating server: SpotServerOptions and ReservedServerOptions are exclusive")
 	}
+	keyName := uuid.New().String()
+	err = mgr.AWS.KeyPairManager.Import(keyName, options.KeyPair.PublicKey)
+	defer func() { _ = mgr.AWS.KeyPairManager.Delete(keyName) }()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+	}
 	if options.SpotServerOptions != nil {
-		id, err = mgr.createSpotInstance(options)
+		id, err = mgr.createSpotInstance(options, keyName)
 	} else if options.ReservedServerOptions != nil {
 		id, err = mgr.createReservedInstance(options)
 	} else {
-		id, err = mgr.createOnDemandInstance(options)
+		id, err = mgr.createOnDemandInstance(options, keyName)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating server")
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	err = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
 		InstanceIds: []*string{id},
 	})
+
 	if err != nil {
 		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating reserved instance")
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	err = mgr.AWS.AddTags(*id, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating reserved instance")
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	err = mgr.addSecurityGroups(options, *id)
 	if err != nil {
 		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating reserved instance")
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	if options.PublicIP {
 		_, err = mgr.associatePublicAddress(*id)
 		if err != nil {
 			_ = mgr.Delete(*id)
-			return nil, errors.Wrapf(err, "error associating elastic ip to server %s", *id)
+			return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 		}
 	}
 	err = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
@@ -279,7 +287,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	})
 	if err != nil {
 		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating reserved instance")
+		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	return mgr.Get(*id)
 
