@@ -1,4 +1,4 @@
-package openstack_test
+package azure_test
 
 import (
 	"testing"
@@ -7,16 +7,16 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type OSImageManagerTestSuite struct {
+type AZImageManagerTestSuite struct {
 	tests.ImageManagerTestSuite
 }
 
 //SetupSuite set up image manager
-func (suite *OSImageManagerTestSuite) SetupSuite() {
+func (suite *AZImageManagerTestSuite) SetupSuite() {
 	p := GetProvider()
 	suite.Mgr = p.GetImageManager()
 }
 
-func TestOSImageManagerTestSuite(t *testing.T) {
-	suite.Run(t, new(OSImageManagerTestSuite))
+func TestAZImageManagerTestSuite(t *testing.T) {
+	suite.Run(t, new(AZImageManagerTestSuite))
 }
