@@ -16,6 +16,6 @@ func (suite *OSSecurityGroupManagerTestSuite) SetupSuite() {
 	suite.Prov = GetProvider()
 }
 
-func TestAWSSecurityGroupManagerTestSuite(t *testing.T) {
+func TestOSSecurityGroupManagerTestSuite(t *testing.T) {
 	suite.Run(t, new(OSSecurityGroupManagerTestSuite))
 }

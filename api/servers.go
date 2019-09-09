@@ -49,7 +49,6 @@ type Server struct {
 	AccessIPv6     string
 	State          ServerState
 	CreatedAt      time.Time
-	KeyPairName    string
 	LeasingType    LeasingType
 	LeaseDuration  time.Duration
 }

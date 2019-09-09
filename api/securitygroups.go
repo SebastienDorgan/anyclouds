@@ -75,27 +75,28 @@ type SecurityGroupOptions struct {
 	NetworkID   string
 }
 
+type SecurityGroupAttachmentOptions struct {
+	SecurityGroupID string
+	ServerID        string
+	NetworkID       string
+	SubnetID        string
+	IPAddress       *string
+}
+
 //SecurityGroupManager defines security group management functions a anyclouds provider must provide
 type SecurityGroupManager interface {
 	//Create a security group
 	Create(options *SecurityGroupOptions) (*SecurityGroup, error)
 	//Delete a security group
-	//Do not delete rules
 	Delete(id string) error
 	//List security groups
-	//Do not fetch rules
 	List() ([]SecurityGroup, error)
 	//Get security group
-	//fetch rules
 	Get(id string) (*SecurityGroup, error)
-	//Add a server to a security group
-	AddServer(id string, serverID string) error
-	//Remove remove a server from a security group
-	RemoveServer(id string, serverID string) error
-	//ListByServer list security groups by server
-	ListByServer(serverID string) ([]SecurityGroup, error)
+	//Attach a security group to a server
+	Attach(options *SecurityGroupAttachmentOptions) error
 	//Add a rule to a security group
 	AddRule(options *SecurityRuleOptions) (*SecurityRule, error)
 	//Delete a rule
-	DeleteRule(ruleID string) error
+	DeleteRule(groupId, ruleID string) error
 }

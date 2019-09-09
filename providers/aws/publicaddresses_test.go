@@ -117,7 +117,7 @@ func TestPublicAddresses(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	err = prov.GetNetworkManager().DeleteSubnet(snet.ID)
+	err = prov.GetNetworkManager().DeleteSubnet(net.ID, snet.ID)
 	assert.NoError(t, err)
 	err = prov.GetSecurityGroupManager().Delete(sg.ID)
 	assert.NoError(t, err)

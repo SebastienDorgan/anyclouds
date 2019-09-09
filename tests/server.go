@@ -179,7 +179,6 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 
 	assert.Equal(s.T(), server.Name, "test_server")
 	assert.Equal(s.T(), server.ImageID, img.ID)
-	assert.Equal(s.T(), server.KeyPairName, "kptest")
 	assert.Equal(s.T(), len(server.PrivateIPs[api.IPVersion4]), 1)
 	assert.Equal(s.T(), server.State, api.ServerReady)
 	assert.Equal(s.T(), server.LeasingType, api.LeasingTypeOnDemand)
@@ -188,11 +187,11 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	assert.Equal(s.T(), server.TemplateID, tpl.ID)
 	err = srvMgr.Delete(server.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(sgm.Delete, sg.ID)
+	err = sgm.Delete(sg.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(netm.DeleteSubnet, subnet.ID)
+	err = netm.DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(netm.DeleteNetwork, net.ID)
+	err = netm.DeleteNetwork(net.ID)
 	assert.NoError(s.T(), err)
 }
 
@@ -239,7 +238,6 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), server.Name, "test_server")
 	assert.Equal(s.T(), server.ImageID, img.ID)
-	assert.Equal(s.T(), server.KeyPairName, "kptest")
 	assert.Equal(s.T(), len(server.PrivateIPs[api.IPVersion4]), 1)
 	assert.Equal(s.T(), server.State, api.ServerReady)
 	assert.Equal(s.T(), server.LeasingType, api.LeasingTypeOnDemand)
@@ -272,8 +270,8 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	assert.NoError(s.T(), err)
 	err = WilfulDelete(sgm.Delete, sg.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(netm.DeleteSubnet, subnet.ID)
+	err = netm.DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(netm.DeleteNetwork, net.ID)
+	err = netm.DeleteNetwork(net.ID)
 	assert.NoError(s.T(), err)
 }

@@ -125,27 +125,6 @@ func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
 	return groups(out.SecurityGroups), nil
 }
 
-//ListByServer list security groups by server
-func (mgr *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGroup, error) {
-	out, err := mgr.AWS.EC2Client.DescribeInstanceAttribute(&ec2.DescribeInstanceAttributeInput{
-		Attribute:  aws.String("groupSet"),
-		DryRun:     nil,
-		InstanceId: &serverID,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "Error listing security groups of server")
-	}
-	var result []api.SecurityGroup
-	for _, g := range out.Groups {
-		group, err := mgr.Get(*g.GroupId)
-		if err != nil {
-			continue
-		}
-		result = append(result, *group)
-	}
-	return result, nil
-}
-
 //Get returns the security group identified by id
 func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 	out, err := mgr.AWS.EC2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
@@ -165,46 +144,57 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 	return group(out.SecurityGroups[0]), nil
 }
 
-//AddServer a server to a security group
-func (mgr *SecurityGroupManager) AddServer(id string, serverID string) error {
-	groups, err := mgr.ListByServer(serverID)
-	if err != nil {
-		return errors.Wrap(err, "error adding security groups to server")
-	}
-	var groupIds []string
-	for _, g := range groups {
-		groupIds = append(groupIds, g.ID)
-	}
-	groupIds = append(groupIds, id)
-
-	_, err = mgr.AWS.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-		Groups:     aws.StringSlice(groupIds),
-		InstanceId: &serverID,
+//Attach a server to a security group
+func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOptions) error {
+	out, err := mgr.AWS.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("attachment.instance-id"),
+				Values: []*string{aws.String(options.ServerID)},
+			},
+			{
+				Name:   aws.String("subnet-id"),
+				Values: []*string{aws.String(options.SubnetID)},
+			},
+		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "error adding security groups to server")
+		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
+			options.SecurityGroupID,
+			options.ServerID,
+			options.SubnetID,
+			options.NetworkID,
+		)
 	}
-	return nil
-}
-
-//RemoveServer remove a server from a security group
-func (mgr *SecurityGroupManager) RemoveServer(id string, serverID string) error {
-	groups, err := mgr.ListByServer(serverID)
-	if err != nil {
-		return errors.Wrap(err, "error removing security groups from server")
+	if out.NetworkInterfaces == nil {
+		err = errors.Errorf("no network interface found for subnet %s of network %s on server %s",
+			options.SubnetID,
+			options.NetworkID,
+			options.ServerID,
+		)
+		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
+			options.SecurityGroupID,
+			options.ServerID,
+			options.SubnetID,
+			options.NetworkID,
+		)
 	}
-	var groupIds []string
-	for _, g := range groups {
-		if id != g.ID {
-			groupIds = append(groupIds, g.ID)
+	for _, ni := range out.NetworkInterfaces {
+		if options.IPAddress != nil && *ni.PrivateIpAddress != *options.IPAddress {
+			continue
 		}
-	}
-	_, err = mgr.AWS.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-		InstanceId: &serverID,
-		Groups:     aws.StringSlice(groupIds),
-	})
-	if err != nil {
-		return errors.Wrap(err, "error removing security groups from server")
+		_, err = mgr.AWS.EC2Client.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
+			Groups:             []*string{aws.String(options.SecurityGroupID)},
+			NetworkInterfaceId: ni.NetworkInterfaceId,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
+				options.SecurityGroupID,
+				options.ServerID,
+				options.SubnetID,
+				options.NetworkID,
+			)
+		}
 	}
 	return nil
 }
@@ -349,7 +339,7 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 }
 
 //DeleteRule deletes a security rule from an security group
-func (mgr *SecurityGroupManager) DeleteRule(ruleID string) error {
+func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
 	rule := idr(ruleID)
 	ipPerm, err := ipPermissionFromRule(rule)
 	if err != nil {

@@ -118,7 +118,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 
 }
 
-//Name name of the provider
+//DeviceName name of the provider
 func (p *Provider) Name() string {
 	return "AWS"
 }

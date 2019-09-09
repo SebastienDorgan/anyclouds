@@ -17,7 +17,7 @@ func createId(publisher, offer, sku, version string) string {
 	return fmt.Sprintf("%s##%s##%s##%s", publisher, offer, sku, version)
 }
 
-func parseId(id string) (publisher, offer, sku, version string) {
+func ParseId(id string) (publisher, offer, sku, version string) {
 	tokens := strings.Split(id, "##")
 	publisher = tokens[0]
 	offer = tokens[1]
@@ -47,7 +47,7 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 					return nil, errors.Wrap(err, "error listing images")
 				}
 				for _, version := range *versions.Value {
-					//img, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, *offer.Name, *sku.Name, *version.Name)
+					//img, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, *offer.DeviceName, *sku.DeviceName, *version.DeviceName)
 					//if err != nil {
 					//	return nil, errors.Wrap(err, "error listing images")
 					//}
@@ -71,7 +71,7 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 
 func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 	cfg := mgr.Provider.Configuration
-	publisher, offer, sku, version := parseId(id)
+	publisher, offer, sku, version := ParseId(id)
 	_, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, offer, sku, version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting images")

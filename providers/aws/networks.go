@@ -202,21 +202,21 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 	}
 	out, err := mgr.AWS.EC2Client.CreateSubnet(&input)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error creating subnet")
+		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)
 	}
 
 	err = mgr.AWS.AddTags(*out.Subnet.SubnetId, map[string]string{"name": options.Name})
 	if err != nil {
-		_ = mgr.DeleteSubnet(*out.Subnet.SubnetId)
-		return nil, errors.Wrapf(err, "Error creating subnet %s", options.Name)
+		_ = mgr.DeleteSubnet(options.NetworkID, *out.Subnet.SubnetId)
+		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)
 	}
 	err = mgr.associateRouteTable(options, out)
 	if err != nil {
-		_ = mgr.DeleteSubnet(*out.Subnet.SubnetId)
-		return nil, errors.Wrapf(err, "Error creating subnet %s", options.Name)
+		_ = mgr.DeleteSubnet(options.NetworkID, *out.Subnet.SubnetId)
+		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)
 	}
 
-	return mgr.GetSubnet(*out.Subnet.SubnetId)
+	return mgr.GetSubnet(options.NetworkID, *out.Subnet.SubnetId)
 }
 
 func (mgr *NetworkManager) associateRouteTable(options *api.SubnetOptions, out *ec2.CreateSubnetOutput) error {
@@ -266,9 +266,9 @@ func (mgr *NetworkManager) populateRouteTable(networkId string, gw *ec2.Internet
 }
 
 //DeleteSubnet deletes the subnet identified by id
-func (mgr *NetworkManager) DeleteSubnet(id string) error {
+func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) error {
 	_, err := mgr.AWS.EC2Client.DeleteSubnet(&ec2.DeleteSubnetInput{
-		SubnetId: &id,
+		SubnetId: &subnetID,
 	})
 	return errors.Wrap(err, "Error creating subnet")
 }
@@ -296,17 +296,17 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 }
 
 //GetSubnet returns the configuration of the subnet identified by id
-func (mgr *NetworkManager) GetSubnet(id string) (*api.Subnet, error) {
+func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, error) {
 	out, err := mgr.AWS.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
-		SubnetIds: []*string{&id},
+		SubnetIds: []*string{&subnetID},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting subnet %s", id)
+		return nil, errors.Wrapf(err, "error getting subnet %s", subnetID)
 	}
 	for _, sn := range out.Subnets {
-		if id == *sn.SubnetId {
+		if subnetID == *sn.SubnetId {
 			return subnet(sn), nil
 		}
 	}
-	return nil, fmt.Errorf("subnet %s not found", id)
+	return nil, fmt.Errorf("subnet %s not found", subnetID)
 }

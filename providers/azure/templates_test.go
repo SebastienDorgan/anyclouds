@@ -1,7 +1,6 @@
 package azure_test
 
 import (
-	"github.com/SebastienDorgan/anyclouds/providers/azure"
 	"testing"
 
 	"github.com/SebastienDorgan/anyclouds/tests"
@@ -14,7 +13,7 @@ type AZTemplateManagerTestSuite struct {
 
 //SetupSuite set up image manager
 func (suite *AZTemplateManagerTestSuite) SetupSuite() {
-	p := azure.GetProvider()
+	p := GetProvider()
 	suite.Mgr =
 		p.GetTemplateManager()
 }

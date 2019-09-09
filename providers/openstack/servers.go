@@ -213,7 +213,6 @@ func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 		PrivateIPs:     addresses(srv.Addresses),
 		Name:           srv.Name,
 		CreatedAt:      srv.Created,
-		KeyPairName:    srv.KeyName,
 		SecurityGroups: ids(srv.SecurityGroups),
 	}
 }

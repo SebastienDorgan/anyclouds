@@ -9,7 +9,7 @@ import (
 
 func fakeExtra(srv *api.ServerTemplate) *TemplateSelector {
 	return &TemplateSelector{
-		CPUArch:           api.ArchX8664,
+		CPUArch:           api.ArchAmd64,
 		NumberOfCPUCore:   srv.NumberOfCPUCore,
 		CPUCoreFrequency:  0.0,
 		RAMSize:           srv.RAMSize,

@@ -293,54 +293,27 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 
 }
 
-func isDefaultSecurityGroup(sgs []api.SecurityGroup) func(i int) bool {
-	return func(i int) bool {
-		if sgs[i].Name == "default" {
-			return true
-		}
-		return false
-	}
-}
-
 func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, instanceId string) error {
 	if len(options.SecurityGroups) == 0 {
 		return nil
 	}
-	defaultSecurityGroup, e := mgr.getDefaultSecurityGroup(instanceId)
-	removeDefaultSecurityGroup := e == nil && defaultSecurityGroup != nil
+	var err error
 	for _, sg := range options.SecurityGroups {
-		err := mgr.AWS.SecurityGroupManager.AddServer(sg, instanceId)
+		_, err = mgr.AWS.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
+			Groups:     []*string{aws.String(sg)},
+			InstanceId: aws.String(instanceId),
+		})
 		if err != nil {
 			return err
 		}
 	}
-	e = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
+	err = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
 		InstanceIds: []*string{&instanceId},
 	})
-	if e != nil {
-		return e
-	}
-	//remove default security group
-	if removeDefaultSecurityGroup {
-		e = mgr.AWS.SecurityGroupManager.RemoveServer(defaultSecurityGroup.ID, instanceId)
-		if e != nil {
-			return e
-		}
+	if err != nil {
+		return err
 	}
 	return nil
-}
-
-func (mgr *ServerManager) getDefaultSecurityGroup(instanceId string) (*api.SecurityGroup, error) {
-	sgs, err := mgr.AWS.SecurityGroupManager.ListByServer(instanceId)
-	if err != nil {
-		return nil, err
-	}
-	size := len(sgs)
-	n := sort.Search(size, isDefaultSecurityGroup(sgs))
-	if n < size {
-		return &sgs[n], nil
-	}
-	return nil, nil
 }
 
 //Delete delete Server identified by id
@@ -364,10 +337,10 @@ func (mgr *ServerManager) Delete(id string) error {
 		}
 
 	}
-	_ = mgr.AWS.EC2Client.WaitUntilInstanceTerminated(&ec2.DescribeInstancesInput{
+	err = mgr.AWS.EC2Client.WaitUntilInstanceTerminated(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
-	return nil
+	return errors.Wrapf(err, "error deleting instance %s", id)
 }
 
 func (mgr *ServerManager) releaseAddress(srv *api.Server) error {
@@ -526,7 +499,6 @@ func server(instance *ec2.Instance) *api.Server {
 		PublicIPv4:     publicIPv4,
 		State:          state(instance.State),
 		CreatedAt:      *instance.LaunchTime,
-		KeyPairName:    *instance.KeyName,
 		LeasingType:    leasingType,
 	}
 }

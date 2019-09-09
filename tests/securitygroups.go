@@ -70,7 +70,7 @@ func (s *SecurityGroupManagerTestSuite) TestSecurityGroupManager() {
 		To:   10000,
 	}))
 
-	err = Mgr.DeleteRule(r.ID)
+	err = Mgr.DeleteRule(sg.ID, r.ID)
 	sg, err = Mgr.Get(sg.ID)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 0, len(sg.Rules))

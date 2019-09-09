@@ -2,10 +2,10 @@ package openstack
 
 import (
 	"fmt"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"strings"
 
 	"github.com/SebastienDorgan/anyclouds/api"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/secgroups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/pkg/errors"
@@ -18,6 +18,10 @@ type SecurityGroupManager struct {
 
 func group(g *groups.SecGroup) *api.SecurityGroup {
 	tokens := strings.Split("/", g.Name)
+	var rls []api.SecurityRule
+	for _, r := range g.Rules {
+		rls = append(rls, *rule(&r))
+	}
 	return &api.SecurityGroup{
 		Name:      tokens[0],
 		NetworkID: tokens[1],
@@ -33,7 +37,7 @@ func checkGroupName(name string) error {
 }
 
 //Create creates an openstack security group
-func (sec *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
 	err := checkGroupName(options.Name)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error creating security group")
@@ -43,7 +47,7 @@ func (sec *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 		Description: options.Description,
 	}
 
-	g, err := groups.Create(sec.OpenStack.Network, createOpts).Extract()
+	g, err := groups.Create(mgr.OpenStack.Network, createOpts).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error creating security group")
 	}
@@ -52,40 +56,40 @@ func (sec *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 }
 
 //Delete deletes the Openstack security group identified by id
-func (sec *SecurityGroupManager) Delete(id string) error {
-	err := groups.Delete(sec.OpenStack.Network, id).ExtractErr()
+func (mgr *SecurityGroupManager) Delete(id string) error {
+	err := groups.Delete(mgr.OpenStack.Network, id).ExtractErr()
 	if err != nil {
 		return errors.Wrap(ProviderError(err), "error listing security group")
 	}
 	return nil
 }
 
-func (sec *SecurityGroupManager) list(opts groups.ListOpts) ([]api.SecurityGroup, error) {
-	allPages, err := groups.List(sec.OpenStack.Network, opts).AllPages()
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "error listing security group")
-	}
-
-	allGroups, err := groups.ExtractGroups(allPages)
+func (mgr *SecurityGroupManager) list(opts groups.ListOpts) ([]api.SecurityGroup, error) {
+	securityGroups, err := mgr.groups(opts)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error listing security group")
 	}
 	var result []api.SecurityGroup
-	for _, g := range allGroups {
-		group, err := sec.get(g.ID, false)
-		if err != nil {
-			return nil, errors.Wrap(ProviderError(err), "Error listing security group")
-		}
-		result = append(result, *group)
+	for _, g := range securityGroups {
+		result = append(result, *group(&g))
 	}
 	return result, nil
 }
 
+func (mgr *SecurityGroupManager) groups(opts groups.ListOpts) ([]groups.SecGroup, error) {
+	allPages, err := groups.List(mgr.OpenStack.Network, opts).AllPages()
+	if err != nil {
+		return nil, err
+	}
+	return groups.ExtractGroups(allPages)
+
+}
+
 //List list all Openstack security groups defined in the tenant
-func (sec *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
 	listOpts := groups.ListOpts{}
 
-	return sec.list(listOpts)
+	return mgr.list(listOpts)
 }
 
 func rule(r *rules.SecGroupRule) *api.SecurityRule {
@@ -113,12 +117,12 @@ func ruleOptions(rule *api.SecurityRuleOptions) *rules.CreateOpts {
 }
 
 //Get returns the Openstack security group identified by id
-func (sec *SecurityGroupManager) get(id string, withRules bool) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) get(id string, withRules bool) (*api.SecurityGroup, error) {
 	listOpts := groups.ListOpts{
 		ID: id,
 	}
 
-	securityGroups, err := sec.list(listOpts)
+	securityGroups, err := mgr.list(listOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -128,74 +132,63 @@ func (sec *SecurityGroupManager) get(id string, withRules bool) (*api.SecurityGr
 		return nil, fmt.Errorf("Error getting  security group: Provider error: multiple security groups exists with the same identifier")
 	}
 	group := &securityGroups[0]
-
-	if !withRules {
-		return group, nil
-	}
-	ruleOpts := rules.ListOpts{
-		SecGroupID: group.ID,
-	}
-
-	allPages, err := rules.List(sec.OpenStack.Network, ruleOpts).AllPages()
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error getting  security group")
-	}
-
-	allRules, err := rules.ExtractRules(allPages)
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error getting  security group")
-	}
-	var securityRules []api.SecurityRule
-	for _, r := range allRules {
-		securityRules = append(securityRules, *rule(&r))
-	}
-	group.Rules = securityRules
 	return group, nil
 }
 
 //Get returns the  security group identified by id fetching rules
-func (sec *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
-	return sec.get(id, true)
+func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
+	return mgr.get(id, true)
 }
 
-//AddServer a server to a security group
-func (sec *SecurityGroupManager) AddServer(id string, serverID string) error {
-	err := secgroups.AddServer(sec.OpenStack.Compute, serverID, id).ExtractErr()
-	return errors.Wrap(ProviderError(err), "Error deleting security rule")
-}
-
-//RemoveServer remove a server from a security group
-func (sec *SecurityGroupManager) RemoveServer(id string, serverID string) error {
-	err := secgroups.RemoveServer(sec.OpenStack.Compute, serverID, id).ExtractErr()
-	return errors.Wrap(ProviderError(err), "Error deleting security rule")
-}
-
-//ListByServer list security groups by server
-func (sec *SecurityGroupManager) ListByServer(serverID string) ([]api.SecurityGroup, error) {
-	page, err := secgroups.ListByServer(sec.OpenStack.Compute, serverID).AllPages()
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing security group by server")
-	}
-	securityGroups, err := secgroups.ExtractSecurityGroups(page)
-	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing security group by server")
-	}
-	var result []api.SecurityGroup
-	for _, g := range securityGroups {
-		group := api.SecurityGroup{
-			ID:   g.ID,
-			Name: g.Name,
+func checkIPs(subnetID string, ip string, ips []ports.IP) bool {
+	for _, addr := range ips {
+		if subnetID == addr.SubnetID && addr.IPAddress == ip {
+			return true
 		}
-		result = append(result, group)
 	}
-	return result, nil
+	return false
+}
+
+//Attach a server to a security group
+func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOptions) error {
+	//srv, err := servers.Get(mgr.OpenStack.Compute, id).Extract()
+	sn, err := mgr.OpenStack.NetworkManager.GetSubnet(options.NetworkID, options.SubnetID)
+	if err != nil {
+		return errors.Wrapf(ProviderError(err), "error attaching security group %s to server %s on subnet %s of network %s",
+			options.SecurityGroupID,
+			options.ServerID,
+			options.SubnetID,
+			options.NetworkID,
+		)
+	}
+	pts, err := mgr.OpenStack.PublicIPAddressManager.listPorts(options.ServerID)
+	for _, p := range pts {
+		if p.NetworkID == sn.NetworkID && (options.IPAddress == nil || checkIPs(options.SubnetID, *options.IPAddress, p.FixedIPs)) {
+			ports.Update(mgr.OpenStack.Network, p.ID, ports.UpdateOpts{
+				Name:                &p.Name,
+				Description:         &p.Description,
+				AdminStateUp:        &p.AdminStateUp,
+				FixedIPs:            &p.FixedIPs,
+				DeviceID:            &p.DeviceID,
+				DeviceOwner:         &p.DeviceOwner,
+				SecurityGroups:      &[]string{options.SecurityGroupID},
+				AllowedAddressPairs: &p.AllowedAddressPairs,
+			})
+		}
+	}
+	return errors.Wrapf(ProviderError(err), "error attaching security group %s to server %s on subnet %s of network %s",
+		options.SecurityGroupID,
+		options.ServerID,
+		options.SubnetID,
+		options.NetworkID,
+	)
 }
 
 //AddRule adds a security rule to an OpenStack security group
-func (sec *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
+func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
 	opts := ruleOptions(options)
 	opts.SecGroupID = options.SecurityGroupID
-	r, err := rules.Create(sec.OpenStack.Network, opts).Extract()
+	r, err := rules.Create(mgr.OpenStack.Network, opts).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error adding security rule")
 	}
@@ -203,8 +196,8 @@ func (sec *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 }
 
 //DeleteRule deletes a security rule from an OpenStack security group
-func (sec *SecurityGroupManager) DeleteRule(ruleID string) error {
-	err := rules.Delete(sec.OpenStack.Network, ruleID).ExtractErr()
+func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
+	err := rules.Delete(mgr.OpenStack.Network, ruleID).ExtractErr()
 	return errors.Wrap(ProviderError(err), "Error deleting security rule")
 
 }

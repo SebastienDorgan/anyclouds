@@ -107,9 +107,9 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 		KeyPair:         kp,
 	})
 	assert.NoError(s.T(), err)
-	sgs, err := s.Prov.GetSecurityGroupManager().ListByServer(server.ID)
+
 	rule, err := s.Prov.GetSecurityGroupManager().AddRule(&api.SecurityRuleOptions{
-		SecurityGroupID: sgs[0].ID,
+		SecurityGroupID: server.SecurityGroups[0],
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
 		Protocol:        api.ProtocolTCP,
@@ -131,11 +131,11 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetVolumeManager().Delete(v.ID)
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetSecurityGroupManager().DeleteRule(rule.ID)
+	err = s.Prov.GetSecurityGroupManager().DeleteRule(server.SecurityGroups[0], rule.ID)
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetServerManager().Delete(server.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(s.Prov.GetNetworkManager().DeleteSubnet, sn.ID)
+	err = s.Prov.GetNetworkManager().DeleteSubnet(n.ID, sn.ID)
 	assert.NoError(s.T(), err)
 
 }

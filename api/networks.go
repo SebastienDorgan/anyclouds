@@ -4,23 +4,17 @@ package api
 type Network struct {
 	//unique identifier of the network
 	ID string
-	//Name of the network
+	//DeviceName of the network
 	Name string
 	//Cidr of the network
 	CIDR string
-}
-
-type NetworkSlice []Network
-
-func (s NetworkSlice) Len() int {
-	return len(s)
 }
 
 //NetworkOptions defines options to use when creating a network
 type NetworkOptions struct {
 	//name of the network
 	CIDR string
-	//Name of the network
+	//DeviceName of the network
 	Name string
 }
 
@@ -70,7 +64,7 @@ type NetworkManager interface {
 	GetNetwork(id string) (*Network, error)
 
 	CreateSubnet(options *SubnetOptions) (*Subnet, error)
-	DeleteSubnet(id string) error
+	DeleteSubnet(networkID string, subnetID string) error
 	ListSubnets(networkID string) ([]Subnet, error)
-	GetSubnet(id string) (*Subnet, error)
+	GetSubnet(networkID, subnetID string) (*Subnet, error)
 }

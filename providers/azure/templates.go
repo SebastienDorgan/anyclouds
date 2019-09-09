@@ -8,7 +8,7 @@ import (
 )
 
 type ServerTemplateManager struct {
-	Provider Provider
+	Provider *Provider
 }
 
 func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
