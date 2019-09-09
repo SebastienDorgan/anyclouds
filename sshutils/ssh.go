@@ -19,21 +19,22 @@ type SSHConfig struct {
 func CreateClient(cfg *SSHConfig) (*ssh.Client, error) {
 	if cfg.Proxy == nil {
 		return ssh.Dial("tcp", cfg.Addr, cfg.ClientConfig)
-	} else {
-		client, err := CreateClient(cfg.Proxy)
-		if err != nil {
-			return nil, err
-		}
-		conn, err := client.Dial("tcp", cfg.Addr)
-		if err != nil {
-			return nil, err
-		}
-		c, channels, reqs, err := ssh.NewClientConn(conn, cfg.Addr, cfg.ClientConfig)
-		if err != nil {
-			return nil, err
-		}
-		return ssh.NewClient(c, channels, reqs), nil
 	}
+
+	client, err := CreateClient(cfg.Proxy)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := client.Dial("tcp", cfg.Addr)
+	if err != nil {
+		return nil, err
+	}
+	c, channels, reqs, err := ssh.NewClientConn(conn, cfg.Addr, cfg.ClientConfig)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.NewClient(c, channels, reqs), nil
+
 }
 
 //KeyPair a key pair

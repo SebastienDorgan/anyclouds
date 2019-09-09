@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const ResourceReachStableStateTimeout = 3 * time.Minute
+const resourceReachStableStateTimeout = 3 * time.Minute
 
 //WaitUntilServerReachStableState wait until server reach stable state
 func WaitUntilServerReachStableState(mgr api.ServerManager, serverID string) (*api.Server, error) {
@@ -18,14 +18,12 @@ func WaitUntilServerReachStableState(mgr api.ServerManager, serverID string) (*a
 		state := v.(*api.Server).State
 		return state != api.ServerPending
 	}
-	res := retry.With(get).For(ResourceReachStableStateTimeout).Every(time.Second).Until(finished).Go()
+	res := retry.With(get).For(resourceReachStableStateTimeout).Every(time.Second).Until(finished).Go()
 	if res.Timeout || res.LastError != nil {
 		if res.LastError != nil {
 			return nil, errors.Wrap(res.LastError, "Stop: server in error")
-		} else {
-			return nil, errors.Errorf("Timeout: server does not reach stable state")
 		}
-
+		return nil, errors.Errorf("Timeout: server does not reach stable state")
 	}
 	return res.LastValue.(*api.Server), nil
 }

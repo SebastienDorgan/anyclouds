@@ -252,8 +252,8 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 }
 
 //Attachments returns all the attachments of an Server
-func (mgr *VolumeManager) Attachments(serverID string) (api.VolumeAttachmentSlice, error) {
-	var atts api.VolumeAttachmentSlice
+func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
+	var atts []api.VolumeAttachment
 	volumes, err := mgr.List()
 	if err != nil {
 		return nil, errors.Wrapf(err, "error listing attachments of server %s", serverID)

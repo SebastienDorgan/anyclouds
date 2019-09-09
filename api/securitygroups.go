@@ -75,6 +75,7 @@ type SecurityGroupOptions struct {
 	NetworkID   string
 }
 
+//SecurityGroupAttachmentOptions options that can be used to attach a security group to a network inteface
 type SecurityGroupAttachmentOptions struct {
 	SecurityGroupID string
 	ServerID        string
@@ -98,5 +99,5 @@ type SecurityGroupManager interface {
 	//Add a rule to a security group
 	AddRule(options *SecurityRuleOptions) (*SecurityRule, error)
 	//Delete a rule
-	DeleteRule(groupId, ruleID string) error
+	DeleteRule(groupID, ruleID string) error
 }

@@ -1,7 +1,5 @@
 package api
 
-import "time"
-
 //Volume defines volume properties
 type Volume struct {
 	ID       string
@@ -19,6 +17,7 @@ type VolumeOptions struct {
 	MinDataRate int64
 }
 
+//ModifyVolumeOptions options that can be used to modify a volume
 type ModifyVolumeOptions struct {
 	ID          string
 	Size        int64
@@ -34,27 +33,6 @@ type VolumeAttachment struct {
 	Device   string
 }
 
-type VolumeAttachmentSlice []VolumeAttachment
-
-func (s VolumeAttachmentSlice) Len() int {
-	return len(s)
-}
-
-type BackupOptions struct {
-	Name        string
-	Description string
-	Force       bool
-	Incremental bool
-}
-
-type Backup struct {
-	ID          string
-	VolumeID    string
-	Name        string
-	Description string
-	CreatedAt   time.Time
-}
-
 //VolumeManager defines volume management functions an anyclouds provider must provide
 type VolumeManager interface {
 	Create(options *VolumeOptions) (*Volume, error)
@@ -64,5 +42,5 @@ type VolumeManager interface {
 	Modify(options *ModifyVolumeOptions) (*Volume, error)
 	Attach(volumeID string, serverID string, device string) (*VolumeAttachment, error)
 	Detach(volumeID string, serverID string, force bool) error
-	Attachments(serverID string) (VolumeAttachmentSlice, error)
+	Attachments(serverID string) ([]VolumeAttachment, error)
 }

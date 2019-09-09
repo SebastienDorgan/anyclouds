@@ -10,8 +10,6 @@ import (
 type ServerState string
 
 const (
-	////ServerBuilding State of an Server in building
-	//ServerBuilding ServerState = "BUILDING"
 	//ServerReady State of a started Server
 	ServerReady ServerState = "READY"
 	//ServerPaused State of a paused server
@@ -28,11 +26,13 @@ const (
 	ServerUnknownState ServerState = "UNKNOWN"
 )
 
+//SpotServerOptions options that can be used to create a spot instance
 type SpotServerOptions struct {
 	HourlyPrice float32
 	Duration    time.Duration
 }
 
+//ReservedServerOptions options that can be use to create a reserved instance
 type ReservedServerOptions struct {
 	Duration time.Duration
 }

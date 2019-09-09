@@ -118,12 +118,12 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 }
 
 //Attachments returns all the attachments of an Server
-func (mgr *VolumeManager) Attachments(serverID string) (api.VolumeAttachmentSlice, error) {
+func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
 	page, err := volumeattach.List(mgr.OpenStack.Compute, serverID).AllPages()
 	if err != nil {
 		return nil, errors.Wrapf(ProviderError(err), "Error listing attachments of server %s", serverID)
 	}
-	var res api.VolumeAttachmentSlice
+	var res []api.VolumeAttachment
 	l, err := volumeattach.ExtractVolumeAttachments(page)
 	for _, va := range l {
 		res = append(res, api.VolumeAttachment{
