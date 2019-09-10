@@ -31,7 +31,7 @@ func (mgr *NetworkInterfacesManager) create(options *api.CreateNetworkInterfaceO
 			IPConfigurations: &[]network.InterfaceIPConfiguration{
 				{
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-						PrivateIPAddress:          options.IPAddress,
+						PrivateIPAddress:          options.PrivateIPAddress,
 						PrivateIPAllocationMethod: network.Dynamic,
 						Subnet: &network.Subnet{
 							Name: &options.Name,

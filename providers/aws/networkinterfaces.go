@@ -41,7 +41,7 @@ func (mgr *NetworkInterfaceManager) Create(options *api.CreateNetworkInterfaceOp
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateNetworkInterface(&ec2.CreateNetworkInterfaceInput{
 		Description:      &options.Name,
 		Groups:           []*string{&options.SecurityGroupID},
-		PrivateIpAddress: options.IPAddress,
+		PrivateIpAddress: options.PrivateIPAddress,
 		SubnetId:         &options.SubnetID,
 	})
 	if err != nil {

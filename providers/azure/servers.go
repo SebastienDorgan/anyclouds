@@ -23,13 +23,13 @@ func (mgr *ServerManager) createNetworkInterfaces(options *api.CreateServerOptio
 	var nis []compute.NetworkInterfaceReference
 	for _, sn := range options.Subnets {
 		ni, err := mgr.Provider.NetworkInterfacesManager.Create(&api.CreateNetworkInterfaceOptions{
-			Name:            fmt.Sprintf("NI-%s", sn.Name),
-			NetworkID:       sn.NetworkID,
-			SubnetID:        sn.ID,
-			ServerID:        nil,
-			Primary:         false,
-			IPAddress:       nil,
-			SecurityGroupID: options.DefaultSecurityGroup,
+			Name:             fmt.Sprintf("NI-%s", sn.Name),
+			NetworkID:        sn.NetworkID,
+			SubnetID:         sn.ID,
+			ServerID:         nil,
+			Primary:          false,
+			PrivateIPAddress: nil,
+			SecurityGroupID:  options.DefaultSecurityGroup,
 		})
 		if err != nil {
 			return nil, err

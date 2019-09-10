@@ -36,8 +36,8 @@ func (mgr *NetworkInterfacesManager) Create(options *api.CreateNetworkInterfaceO
 		IPAddress: "",
 		SubnetID:  options.SubnetID,
 	}
-	if options.IPAddress != nil {
-		ip.IPAddress = *options.IPAddress
+	if options.PrivateIPAddress != nil {
+		ip.IPAddress = *options.PrivateIPAddress
 	}
 	var serverID string
 	if options.ServerID != nil {

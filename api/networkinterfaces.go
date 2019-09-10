@@ -15,13 +15,13 @@ type NetworkInterface struct {
 
 //CreateNetworkInterfaceOptions options that can be used to create a network interface card
 type CreateNetworkInterfaceOptions struct {
-	Name            string
-	NetworkID       string
-	SubnetID        string
-	ServerID        *string
-	SecurityGroupID string
-	Primary         bool
-	IPAddress       *string
+	Name             string
+	NetworkID        string
+	SubnetID         string
+	ServerID         *string
+	SecurityGroupID  string
+	Primary          bool
+	PrivateIPAddress *string
 }
 
 //UpdateNetworkInterfacesOptions options can be used to update a network interface card

@@ -39,6 +39,7 @@ type PublicIPPool struct {
 	Ranges []AddressRange
 }
 
+//ListPublicIPAddressOptions options to be used to list public ip address
 type ListPublicIPAddressOptions struct {
 	ServerID *string
 }
