@@ -17,7 +17,7 @@ import (
 
 //SecurityGroupManager defines security group management functions a anyclouds provider must provide
 type SecurityGroupManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 func i64toi(i64 *int64) int {
@@ -85,7 +85,7 @@ func noError() retry.Condition {
 
 //Create creates an security group
 func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
-	out, err := mgr.AWS.EC2Client.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
 		Description: aws.String(options.Description),
 		GroupName:   aws.String(options.Name),
 		VpcId:       aws.String(options.NetworkID),
@@ -102,7 +102,7 @@ func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api
 
 //Delete deletes the security group identified by id
 func (mgr *SecurityGroupManager) Delete(id string) error {
-	_, err := mgr.AWS.EC2Client.DeleteSecurityGroup(&ec2.DeleteSecurityGroupInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.DeleteSecurityGroup(&ec2.DeleteSecurityGroupInput{
 		GroupId: aws.String(id),
 	})
 	return errors.Wrap(err, "Error deleting security groups")
@@ -118,7 +118,7 @@ func groups(in []*ec2.SecurityGroup) []api.SecurityGroup {
 
 //List list all security groups defined in the tenant
 func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
-	out, err := mgr.AWS.EC2Client.DescribeSecurityGroups(nil)
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeSecurityGroups(nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing security groups")
 	}
@@ -127,7 +127,7 @@ func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
 
 //Get returns the security group identified by id
 func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
-	out, err := mgr.AWS.EC2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
 		GroupIds: []*string{
 			aws.String(id),
 		},
@@ -146,7 +146,7 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 
 //Attach a server to a security group
 func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOptions) error {
-	out, err := mgr.AWS.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   aws.String("attachment.instance-id"),
@@ -183,7 +183,7 @@ func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOpti
 		if options.IPAddress != nil && *ni.PrivateIpAddress != *options.IPAddress {
 			continue
 		}
-		_, err = mgr.AWS.EC2Client.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
+		_, err = mgr.Provider.AWSServices.EC2Client.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
 			Groups:             []*string{aws.String(options.SecurityGroupID)},
 			NetworkInterfaceId: ni.NetworkInterfaceId,
 		})
@@ -306,7 +306,7 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 	}
 
 	if options.Direction == api.RuleDirectionIngress {
-		_, err = mgr.AWS.EC2Client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
+		_, err = mgr.Provider.AWSServices.EC2Client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
 			GroupId: &options.SecurityGroupID,
 			IpPermissions: []*ec2.IpPermission{
 				p,
@@ -317,7 +317,7 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 		}
 
 	} else if options.Direction == api.RuleDirectionEgress {
-		_, err = mgr.AWS.EC2Client.AuthorizeSecurityGroupEgress(&ec2.AuthorizeSecurityGroupEgressInput{
+		_, err = mgr.Provider.AWSServices.EC2Client.AuthorizeSecurityGroupEgress(&ec2.AuthorizeSecurityGroupEgressInput{
 			GroupId: &options.SecurityGroupID,
 			IpPermissions: []*ec2.IpPermission{
 				p,
@@ -346,7 +346,7 @@ func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
 		return errors.Wrap(err, "error deleting rule from security group")
 	}
 	if rule.Direction == api.RuleDirectionIngress {
-		_, err := mgr.AWS.EC2Client.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
+		_, err := mgr.Provider.AWSServices.EC2Client.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
 			GroupId: &rule.SecurityGroupID,
 			IpPermissions: []*ec2.IpPermission{
 				ipPerm,
@@ -357,7 +357,7 @@ func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
 		}
 	}
 	if rule.Direction == api.RuleDirectionEgress {
-		_, err := mgr.AWS.EC2Client.RevokeSecurityGroupEgress(&ec2.RevokeSecurityGroupEgressInput{
+		_, err := mgr.Provider.AWSServices.EC2Client.RevokeSecurityGroupEgress(&ec2.RevokeSecurityGroupEgressInput{
 			GroupId: &rule.SecurityGroupID,
 			IpPermissions: []*ec2.IpPermission{
 				ipPerm,

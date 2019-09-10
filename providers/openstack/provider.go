@@ -20,31 +20,31 @@ type Config struct {
 	// the Identity API of the appropriate version. While it's ultimately needed by
 	// all of the identity services, it will often be populated by a provider-level
 	// function.
-	IdentityEndpoint string `json:"identity_endpoint,omitempty"`
+	IdentityEndpoint string
 
 	// Username is required if using Identity V2 API. Consult with your provider's
 	// control panel to discover your account's username. In Identity V3, either
 	// UserID or a combination of Username and DomainID or DomainName are needed.
-	Username string `json:"username,omitempty"`
-	UserID   string `json:"user_id,omitempty"`
+	Username string
+	UserID   string
 
 	// Exactly one of Password or APIKey is required for the Identity V2 and V3
 	// APIs. Consult with your provider's control panel to discover your account's
 	// preferred method of authentication.
-	Password string `json:"password,omitempty"`
-	APIKey   string `json:"api_key,omitempty"`
+	Password string
+	APIKey   string
 
 	// At most one of DomainID and DomainName must be provided if using Username
 	// with Identity V3. Otherwise, either are optional.
-	DomainID   string `json:"domain_id,omitempty"`
-	DomainName string `json:"domain_name,omitempty"`
+	DomainID   string
+	DomainName string
 
 	// The TenantID and TenantName fields are optional for the Identity V2 API.
 	// Some api allow you to specify a TenantName instead of the TenantId.
 	// Some require both. Your provider's authentication policies will determine
 	// how these fields influence authentication.
-	TenantID   string `json:"tenant_id,omitempty"`
-	TenantName string `json:"tenant_name,omitempty"`
+	TenantID   string
+	TenantName string
 
 	// AllowReauth should be set to true if you grant permission for Gophercloud to
 	// cache your credentials in memory, and to allow Gophercloud to attempt to
@@ -56,18 +56,21 @@ type Config struct {
 	// The way to limit the number of attempts is to provide a custom HTTP client to the provider client
 	// and provide a transport that implements the RoundTripper interface and stores the number of failed retries.
 	// For an example of this, see here: https://github.com/gophercloud/rack/blob/1.0.0/auth/clients.go#L311
-	AllowReauth bool `json:"allow_reauth,omitempty"`
+	AllowReauth bool
 
 	// TokenID allows users to authenticate (possibly as another user) with an
 	// authentication token ID.
-	TokenID string `json:"token_id,omitempty"`
+	TokenID string
 
 	//Openstack region (data center) where the infrastructure will be created
-	Region string `json:"region,omitempty"`
+	Region string
 
 	//PublicIPPool name of the floating IP pool
 	//Necessary only if UseFloatingIP is true
-	FloatingIPPool string `json:"floating_ip_pool,omitempty"`
+	FloatingIPPool string
+
+	//Name of the external network used to get public ip addresses
+	ExternalNetworkName string
 }
 
 // ProviderError creates an error string from openstack api error
@@ -99,21 +102,23 @@ func ProviderError(err error) error {
 
 //Provider OpenStack provider
 type Provider struct {
-	client                 *gc.ProviderClient
-	Compute                *gc.ServiceClient
-	Network                *gc.ServiceClient
-	Volume                 *gc.ServiceClient
-	Name                   string
-	KeyPairManager         KeyPairManager
-	ImagesManager          ImageManager
-	NetworkManager         NetworkManager
-	TemplateManager        ServerTemplateManager
-	ServerManager          ServerManager
-	SecurityGroupManager   SecurityGroupManager
-	VolumeManager          VolumeManager
-	PublicIPAddressManager PublicIPAddressManager
-	ExternalNetworkName    string
-	ExternalNetworkID      string
+	client                   *gc.ProviderClient
+	Compute                  *gc.ServiceClient
+	Network                  *gc.ServiceClient
+	Volume                   *gc.ServiceClient
+	Name                     string
+	KeyPairManager           KeyPairManager
+	ImagesManager            ImageManager
+	NetworkManager           NetworkManager
+	NetworkInterfacesManager NetworkInterfacesManager
+	TemplateManager          ServerTemplateManager
+	ServerManager            ServerManager
+	SecurityGroupManager     SecurityGroupManager
+	VolumeManager            VolumeManager
+	PublicIPAddressManager   PublicIPAddressManager
+
+	ExternalNetworkName string
+	ExternalNetworkID   string
 }
 
 //Init initialize OpenStack Provider
@@ -172,13 +177,15 @@ func (p *Provider) Init(config io.Reader, format string) error {
 
 	p.ImagesManager.OpenStack = p
 	p.NetworkManager.OpenStack = p
+	p.NetworkInterfacesManager.OpenStack = p
 	p.ServerManager.OpenStack = p
 	p.TemplateManager.OpenStack = p
 	p.VolumeManager.OpenStack = p
 	p.SecurityGroupManager.OpenStack = p
 	p.KeyPairManager.OpenStack = p
 	p.PublicIPAddressManager.OpenStack = p
-	p.ExternalNetworkName = "Ext-Net"
+
+	p.ExternalNetworkName = cfg.ExternalNetworkName
 	extNetID, err := networks.IDFromName(p.Network, p.ExternalNetworkName)
 	p.ExternalNetworkID = extNetID
 	return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
@@ -187,6 +194,10 @@ func (p *Provider) Init(config io.Reader, format string) error {
 //GetNetworkManager returns an OpenStack NetworkManager
 func (p *Provider) GetNetworkManager() api.NetworkManager {
 	return &p.NetworkManager
+}
+
+func (p *Provider) GetNetworkInterfaceManager() api.NetworkInterfaceManager {
+	return &p.NetworkInterfacesManager
 }
 
 //GetImageManager returns an OpenStack ImageManager
@@ -213,6 +224,6 @@ func (p *Provider) GetServerManager() api.ServerManager {
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return &p.VolumeManager
 }
-func (p *Provider) GetPublicIpAddressManager() api.PublicIPAddressManager {
+func (p *Provider) GetPublicIPAddressManager() api.PublicIPAddressManager {
 	return &p.PublicIPAddressManager
 }

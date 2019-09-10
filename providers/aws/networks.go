@@ -12,12 +12,12 @@ import (
 
 //NetworkManager defines networking functions a anyclouds provider must provide
 type NetworkManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 //CreateNetwork creates a network
 func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
-	out, err := mgr.AWS.EC2Client.CreateVpc(&ec2.CreateVpcInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.CreateVpc(&ec2.CreateVpcInput{
 		AmazonProvidedIpv6CidrBlock: aws.Bool(true),
 		CidrBlock:                   &options.CIDR,
 	})
@@ -25,7 +25,7 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 		return nil, errors.Wrapf(err, "error creating network %s", options.Name)
 	}
 
-	err = mgr.AWS.AddTags(*out.Vpc.VpcId, map[string]string{"name": options.Name})
+	err = mgr.Provider.AddTags(*out.Vpc.VpcId, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.DeleteNetwork(*out.Vpc.VpcId)
 		return nil, errors.Wrapf(err, "Error creating network %s", options.Name)
@@ -45,11 +45,11 @@ func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Netw
 }
 
 func (mgr *NetworkManager) addInternetGateway(out *ec2.CreateVpcOutput) (*ec2.InternetGateway, error) {
-	outGW, err := mgr.AWS.EC2Client.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
+	outGW, err := mgr.Provider.AWSServices.EC2Client.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
 	if err != nil {
 		return nil, err
 	}
-	_, err = mgr.AWS.EC2Client.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
+	_, err = mgr.Provider.AWSServices.EC2Client.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
 		DryRun:            nil,
 		InternetGatewayId: outGW.InternetGateway.InternetGatewayId,
 		VpcId:             out.Vpc.VpcId,
@@ -63,14 +63,14 @@ func (mgr *NetworkManager) removeInternetGateway(id string) error {
 		return err
 	}
 	for _, gw := range out.InternetGateways {
-		_, err = mgr.AWS.EC2Client.DetachInternetGateway(&ec2.DetachInternetGatewayInput{
+		_, err = mgr.Provider.AWSServices.EC2Client.DetachInternetGateway(&ec2.DetachInternetGatewayInput{
 			InternetGatewayId: gw.InternetGatewayId,
 			VpcId:             aws.String(id),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = mgr.AWS.EC2Client.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
+		_, err = mgr.Provider.AWSServices.EC2Client.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
 			InternetGatewayId: gw.InternetGatewayId,
 		})
 		if err != nil {
@@ -81,12 +81,12 @@ func (mgr *NetworkManager) removeInternetGateway(id string) error {
 
 }
 
-func (mgr *NetworkManager) getInternetGateway(vpcId string) (*ec2.DescribeInternetGatewaysOutput, error) {
-	out, err := mgr.AWS.EC2Client.DescribeInternetGateways(&ec2.DescribeInternetGatewaysInput{
+func (mgr *NetworkManager) getInternetGateway(vpcID string) (*ec2.DescribeInternetGatewaysOutput, error) {
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInternetGateways(&ec2.DescribeInternetGatewaysInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   aws.String("attachment.vpc-id"),
-				Values: []*string{aws.String(vpcId)},
+				Values: []*string{aws.String(vpcID)},
 			},
 		},
 	})
@@ -100,20 +100,20 @@ func (mgr *NetworkManager) DeleteNetwork(id string) error {
 		return errors.Wrapf(err, "error deleting network %s", id)
 	}
 
-	_, err = mgr.AWS.EC2Client.DeleteVpc(&ec2.DeleteVpcInput{
+	_, err = mgr.Provider.AWSServices.EC2Client.DeleteVpc(&ec2.DeleteVpcInput{
 		VpcId: &id,
 	})
 	return errors.Wrapf(err, "error deleting network %s", id)
 
 }
 
-func (mgr *NetworkManager) getRouteTable(networkId string) (*ec2.RouteTable, error) {
-	tables, err := mgr.AWS.EC2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
+func (mgr *NetworkManager) getRouteTable(networkID string) (*ec2.RouteTable, error) {
+	tables, err := mgr.Provider.AWSServices.EC2Client.DescribeRouteTables(&ec2.DescribeRouteTablesInput{
 		DryRun: nil,
 		Filters: []*ec2.Filter{
 			{
 				Name:   aws.String("vpc-id"),
-				Values: []*string{aws.String(networkId)},
+				Values: []*string{aws.String(networkID)},
 			},
 		},
 	})
@@ -121,7 +121,7 @@ func (mgr *NetworkManager) getRouteTable(networkId string) (*ec2.RouteTable, err
 		return nil, err
 	}
 	if len(tables.RouteTables) == 0 {
-		return nil, errors.Errorf("route table of network %s not found", networkId)
+		return nil, errors.Errorf("route table of network %s not found", networkID)
 	}
 	return tables.RouteTables[0], err
 }
@@ -142,7 +142,7 @@ func network(v *ec2.Vpc) *api.Network {
 
 //ListNetworks lists networks
 func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
-	out, err := mgr.AWS.EC2Client.DescribeVpcs(&ec2.DescribeVpcsInput{})
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVpcs(&ec2.DescribeVpcsInput{})
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing network")
 	}
@@ -155,7 +155,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, error) {
 
 //GetNetwork returns the configuration of the network identified by id
 func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
-	out, err := mgr.AWS.EC2Client.DescribeVpcs(&ec2.DescribeVpcsInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVpcs(&ec2.DescribeVpcsInput{
 		VpcIds: []*string{&id},
 	})
 	if err != nil {
@@ -192,7 +192,7 @@ func subnet(s *ec2.Subnet) *api.Subnet {
 //CreateSubnet creates a subnet
 func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet, error) {
 	input := ec2.CreateSubnetInput{
-		AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
+		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		VpcId:            &options.NetworkID,
 	}
 	if options.IPVersion == api.IPVersion4 {
@@ -200,12 +200,12 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 	} else if options.IPVersion == api.IPVersion6 {
 		input.Ipv6CidrBlock = &options.CIDR
 	}
-	out, err := mgr.AWS.EC2Client.CreateSubnet(&input)
+	out, err := mgr.Provider.AWSServices.EC2Client.CreateSubnet(&input)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)
 	}
 
-	err = mgr.AWS.AddTags(*out.Subnet.SubnetId, map[string]string{"name": options.Name})
+	err = mgr.Provider.AddTags(*out.Subnet.SubnetId, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.DeleteSubnet(options.NetworkID, *out.Subnet.SubnetId)
 		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)
@@ -224,40 +224,40 @@ func (mgr *NetworkManager) associateRouteTable(options *api.SubnetOptions, out *
 	if err != nil {
 		return err
 	}
-	_, err = mgr.AWS.EC2Client.AssociateRouteTable(&ec2.AssociateRouteTableInput{
+	_, err = mgr.Provider.AWSServices.EC2Client.AssociateRouteTable(&ec2.AssociateRouteTableInput{
 		RouteTableId: rt.RouteTableId,
 		SubnetId:     out.Subnet.SubnetId,
 	})
 	return err
 }
 
-func (mgr *NetworkManager) populateRouteTable(networkId string, gw *ec2.InternetGateway) (*ec2.RouteTable, error) {
-	rt, err := mgr.getRouteTable(networkId)
+func (mgr *NetworkManager) populateRouteTable(networkID string, gw *ec2.InternetGateway) (*ec2.RouteTable, error) {
+	rt, err := mgr.getRouteTable(networkID)
 	if err != nil {
 		return nil, err
 	}
-	_, err = mgr.AWS.EC2Client.CreateRoute(&ec2.CreateRouteInput{
+	_, err = mgr.Provider.AWSServices.EC2Client.CreateRoute(&ec2.CreateRouteInput{
 		DestinationCidrBlock: aws.String("0.0.0.0/0"),
 		GatewayId:            gw.InternetGatewayId,
 		RouteTableId:         rt.RouteTableId,
 	})
 	if err != nil {
-		_, _ = mgr.AWS.EC2Client.DeleteRouteTable(&ec2.DeleteRouteTableInput{
+		_, _ = mgr.Provider.AWSServices.EC2Client.DeleteRouteTable(&ec2.DeleteRouteTableInput{
 			RouteTableId: rt.RouteTableId,
 		})
 		return nil, err
 	}
-	_, err = mgr.AWS.EC2Client.CreateRoute(&ec2.CreateRouteInput{
+	_, err = mgr.Provider.AWSServices.EC2Client.CreateRoute(&ec2.CreateRouteInput{
 		DestinationIpv6CidrBlock: aws.String("::/0"),
 		GatewayId:                gw.InternetGatewayId,
 		RouteTableId:             rt.RouteTableId,
 	})
 	if err != nil {
-		_, _ = mgr.AWS.EC2Client.DeleteRoute(&ec2.DeleteRouteInput{
+		_, _ = mgr.Provider.AWSServices.EC2Client.DeleteRoute(&ec2.DeleteRouteInput{
 			DestinationCidrBlock: aws.String("0.0.0.0/0"),
 			RouteTableId:         rt.RouteTableId,
 		})
-		_, _ = mgr.AWS.EC2Client.DeleteRouteTable(&ec2.DeleteRouteTableInput{
+		_, _ = mgr.Provider.AWSServices.EC2Client.DeleteRouteTable(&ec2.DeleteRouteTableInput{
 			RouteTableId: rt.RouteTableId,
 		})
 		return nil, err
@@ -267,7 +267,7 @@ func (mgr *NetworkManager) populateRouteTable(networkId string, gw *ec2.Internet
 
 //DeleteSubnet deletes the subnet identified by id
 func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) error {
-	_, err := mgr.AWS.EC2Client.DeleteSubnet(&ec2.DeleteSubnetInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.DeleteSubnet(&ec2.DeleteSubnetInput{
 		SubnetId: &subnetID,
 	})
 	return errors.Wrap(err, "Error creating subnet")
@@ -275,7 +275,7 @@ func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) error {
 
 //ListSubnets lists the subnet
 func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
-	out, err := mgr.AWS.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			{
 				Name: aws.String("vpc-id"),
@@ -297,7 +297,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, error) {
 
 //GetSubnet returns the configuration of the subnet identified by id
 func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, error) {
-	out, err := mgr.AWS.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		SubnetIds: []*string{&subnetID},
 	})
 	if err != nil {

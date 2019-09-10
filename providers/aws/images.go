@@ -12,7 +12,7 @@ import (
 
 //ImageManager defines image management functions a anyclouds provider must provide
 type ImageManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 func values(values ...string) []*string {
@@ -24,7 +24,7 @@ func values(values ...string) []*string {
 }
 
 func (mgr *ImageManager) search(owner string, name string) ([]api.Image, error) {
-	out, err := mgr.AWS.EC2Client.DescribeImages(&ec2.DescribeImagesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeImages(&ec2.DescribeImagesInput{
 		DryRun: aws.Bool(false),
 		Owners: values(owner),
 		Filters: []*ec2.Filter{
@@ -101,7 +101,7 @@ func image(img *ec2.Image) *api.Image {
 
 //Get returns the image identified by id
 func (mgr *ImageManager) Get(id string) (*api.Image, error) {
-	out, err := mgr.AWS.EC2Client.DescribeImages(&ec2.DescribeImagesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeImages(&ec2.DescribeImagesInput{
 		DryRun: aws.Bool(false),
 		ImageIds: []*string{
 			aws.String(id),

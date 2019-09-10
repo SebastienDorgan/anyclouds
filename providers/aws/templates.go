@@ -17,7 +17,7 @@ import (
 
 //ServerTemplateManager defines Server template management functions a anyclouds provider must provide
 type ServerTemplateManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 func toFloat32(s string) float32 {
@@ -182,7 +182,7 @@ func toTemplate(price aws.JSONValue) *api.ServerTemplate {
 		strings.Contains(physicalProcessor, "AMD") &&
 			processorArchitecture == "64-bit" {
 		tpl.Arch = api.ArchAmd64
-	} else if physicalProcessor == "AWS Graviton Processor" &&
+	} else if physicalProcessor == "Provider Graviton Processor" &&
 		processorArchitecture == "64-bit" {
 		tpl.Arch = api.ArchARM64
 	} else {
@@ -206,7 +206,7 @@ func (mgr *ServerTemplateManager) createFilters() []*pricing.Filter {
 		{
 			Field: aws.String("location"),
 			Type:  aws.String("TERM_MATCH"),
-			Value: aws.String(mgr.AWS.RegionName),
+			Value: aws.String(mgr.Provider.Configuration.RegionName),
 		},
 		{
 			Type:  aws.String("TERM_MATCH"),
@@ -240,7 +240,7 @@ func (mgr *ServerTemplateManager) createFilters() []*pricing.Filter {
 func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 
 	filters := mgr.createFilters()
-	out, err := mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
+	out, err := mgr.Provider.AWSServices.PricingClient.GetProducts(&pricing.GetProductsInput{
 		Filters:       filters,
 		MaxResults:    aws.Int64(100),
 		FormatVersion: aws.String("aws_v1"),
@@ -252,7 +252,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 	var result []api.ServerTemplate
 	result = appendProducts(out, result)
 	for err == nil && out != nil && out.NextToken != nil && out.PriceList != nil && len(out.PriceList) == 100 {
-		out, err = mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
+		out, err = mgr.Provider.AWSServices.PricingClient.GetProducts(&pricing.GetProductsInput{
 			Filters:       filters,
 			NextToken:     out.NextToken,
 			FormatVersion: aws.String("aws_v1"),
@@ -284,7 +284,7 @@ func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
 		Type:  aws.String("TERM_MATCH"),
 		Value: aws.String(id),
 	})
-	out, err := mgr.AWS.PricingClient.GetProducts(&pricing.GetProductsInput{
+	out, err := mgr.Provider.AWSServices.PricingClient.GetProducts(&pricing.GetProductsInput{
 		Filters:       filters,
 		FormatVersion: aws.String("aws_v1"),
 		ServiceCode:   aws.String("AmazonEC2"),

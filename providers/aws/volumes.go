@@ -11,7 +11,7 @@ import (
 
 //VolumeManager defines volume management functions an anyclouds provider must provide
 type VolumeManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
@@ -31,8 +31,8 @@ func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
 
 //Create creates a volume with options
 func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error) {
-	out, err := mgr.AWS.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
-		AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
+	out, err := mgr.Provider.AWSServices.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
+		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		DryRun:           aws.Bool(false),
 		Encrypted:        aws.Bool(false),
 		Iops:             aws.Int64(options.MinIOPS),
@@ -55,7 +55,7 @@ func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating volume")
 	}
-	err = mgr.AWS.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
 		VolumeIds: []*string{out.VolumeId},
 	})
 	if err != nil {
@@ -67,7 +67,7 @@ func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error
 
 //Delete deletes volume identified by id
 func (mgr *VolumeManager) Delete(id string) error {
-	_, err := mgr.AWS.EC2Client.DeleteVolume(&ec2.DeleteVolumeInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.DeleteVolume(&ec2.DeleteVolumeInput{
 		DryRun:   aws.Bool(false),
 		VolumeId: aws.String(id),
 	})
@@ -102,7 +102,7 @@ func cGiBToGB(v int64) int64 {
 }
 
 func volume(v *ec2.Volume) *api.Volume {
-	var dataRate int64 = 0
+	var dataRate int64
 	if *v.VolumeType == "gp2" {
 		if *v.Size <= cGiBToGB(334) {
 			dataRate = cMiBToMB(128)
@@ -129,13 +129,13 @@ func volume(v *ec2.Volume) *api.Volume {
 
 //List lists volumes along filter
 func (mgr *VolumeManager) List() ([]api.Volume, error) {
-	out, err := mgr.AWS.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
 			{
 				Name: aws.String("availability-zone"),
 				Values: []*string{
-					aws.String(mgr.AWS.Region),
+					aws.String(mgr.Provider.Configuration.Region),
 				},
 			},
 		},
@@ -155,13 +155,13 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 
 //Get returns volume details
 func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
-	out, err := mgr.AWS.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
 			{
 				Name: aws.String("availability-zone"),
 				Values: []*string{
-					aws.String(mgr.AWS.AvailabilityZone),
+					aws.String(mgr.Provider.Configuration.AvailabilityZone),
 				},
 			},
 		},
@@ -181,7 +181,7 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 
 //Attach attaches a volume to an Server
 func (mgr *VolumeManager) Attach(volumeID string, serverID string, device string) (*api.VolumeAttachment, error) {
-	out, err := mgr.AWS.EC2Client.AttachVolume(&ec2.AttachVolumeInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.AttachVolume(&ec2.AttachVolumeInput{
 		Device:     aws.String(device),
 		DryRun:     aws.Bool(false),
 		InstanceId: aws.String(serverID),
@@ -206,7 +206,7 @@ func attachment(out *ec2.VolumeAttachment) *api.VolumeAttachment {
 
 //Detach detach a volume from an Server
 func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) error {
-	_, err := mgr.AWS.EC2Client.DetachVolume(&ec2.DetachVolumeInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.DetachVolume(&ec2.DetachVolumeInput{
 		Device:     nil,
 		DryRun:     aws.Bool(false),
 		Force:      aws.Bool(force),
@@ -216,7 +216,7 @@ func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) e
 	if err != nil {
 		return errors.Wrapf(err, "error detaching volume %s from server %s", volumeID, serverID)
 	}
-	err = mgr.AWS.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
 		VolumeIds: []*string{&volumeID},
 	})
 	return errors.Wrapf(err, "error detaching volume %s from server %s", volumeID, serverID)
@@ -224,13 +224,13 @@ func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) e
 
 //Attachment returns the attachment between a volume and an Server
 func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
-	out, err := mgr.AWS.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
 			{
 				Name: aws.String("availability-zone"),
 				Values: []*string{
-					aws.String(mgr.AWS.AvailabilityZone),
+					aws.String(mgr.Provider.Configuration.AvailabilityZone),
 				},
 			},
 		},
@@ -274,7 +274,7 @@ func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume,
 		MinIOPS:     options.MinIOPS,
 		MinDataRate: options.MinDataRate,
 	})
-	out, err := mgr.AWS.EC2Client.ModifyVolume(&ec2.ModifyVolumeInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.ModifyVolume(&ec2.ModifyVolumeInput{
 		DryRun:     aws.Bool(false),
 		Iops:       aws.Int64(options.MinIOPS),
 		Size:       aws.Int64(options.Size),

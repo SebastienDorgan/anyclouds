@@ -15,24 +15,24 @@ import (
 	"github.com/spf13/viper"
 )
 
-//Config AWS session configuration
+//Config Provider session configuration
 type Config struct {
-	// AWS Region
+	// Provider Region
 	Region string
-	// AWS Access key ID
+	// Provider Access key ID
 	AccessKeyID string
 
-	// AWS Secret Access Key
+	// Provider Secret Access Key
 	SecretAccessKey string
 
-	// AWS Session Token
+	// Provider Session Token
 	SessionToken string
 
 	// Provider used to get credentials
 	ProviderName string
 }
 
-//Retrieve adapts Config to AWS Provider interface
+//Retrieve adapts Config to Provider Provider interface
 func (cfg *Config) Retrieve() (credentials.Value, error) {
 	return credentials.Value{
 		AccessKeyID:     cfg.AccessKeyID,
@@ -41,27 +41,38 @@ func (cfg *Config) Retrieve() (credentials.Value, error) {
 	}, nil
 }
 
-//IsExpired adapts Config to AWS Provider interface
+//IsExpired adapts Config to Provider Provider interface
 func (cfg *Config) IsExpired() bool {
 	return false
 }
 
-//Provider AWS provider
+//Configuration configuration of the Provider Provider
+type Configuration struct {
+	Region           string
+	RegionName       string
+	AvailabilityZone string
+}
+
+//RawServices aws raw services
+type RawServices struct {
+	EC2Client      *ec2.EC2
+	OpsWorksClient *opsworks.OpsWorks
+	PricingClient  *pricing.Pricing
+}
+
+//Provider Provider provider
 type Provider struct {
-	EC2Client              *ec2.EC2
-	OpsWorksClient         *opsworks.OpsWorks
-	PricingClient          *pricing.Pricing
-	KeyPairManager         *KeyPairManager
-	ImagesManager          *ImageManager
-	NetworkManager         *NetworkManager
-	TemplateManager        *ServerTemplateManager
-	ServerManager          *ServerManager
-	SecurityGroupManager   *SecurityGroupManager
-	VolumeManager          *VolumeManager
-	PublicIPAddressManager *PublicIPAddressManager
-	Region                 string
-	RegionName             string
-	AvailabilityZone       string
+	Configuration           Configuration
+	AWSServices             RawServices
+	KeyPairManager          KeyPairManager
+	ImagesManager           ImageManager
+	NetworkManager          NetworkManager
+	NetworkInterfaceManager NetworkInterfaceManager
+	TemplateManager         ServerTemplateManager
+	ServerManager           ServerManager
+	SecurityGroupManager    SecurityGroupManager
+	VolumeManager           VolumeManager
+	PublicIPAddressManager  PublicIPAddressManager
 }
 
 func getEC2Config(cfg *Config) *aws.Config {
@@ -78,7 +89,7 @@ func getPricingConfig(cfg *Config) *aws.Config {
 	}
 }
 
-//Init initialize AWS Provider
+//Init initialize Provider Provider
 func (p *Provider) Init(config io.Reader, format string) error {
 	v := viper.New()
 	v.SetConfigType(format)
@@ -95,64 +106,70 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	if err != nil {
 		return errors.Wrap(err, "Error creation provider session")
 	}
-	p.EC2Client = ec2.New(ec2session)
-	p.OpsWorksClient = opsworks.New(ec2session)
+	p.AWSServices.EC2Client = ec2.New(ec2session)
+	p.AWSServices.OpsWorksClient = opsworks.New(ec2session)
 
 	pricingSession, err := session.NewSession(getPricingConfig(&cfg))
 	if err != nil {
 		return errors.Wrap(err, "Error creation provider session")
 	}
-	p.PricingClient = pricing.New(pricingSession)
-	p.ImagesManager = &ImageManager{AWS: p}
-	p.NetworkManager = &NetworkManager{AWS: p}
-	p.ServerManager = &ServerManager{AWS: p}
-	p.TemplateManager = &ServerTemplateManager{AWS: p}
-	p.VolumeManager = &VolumeManager{AWS: p}
-	p.SecurityGroupManager = &SecurityGroupManager{AWS: p}
-	p.KeyPairManager = &KeyPairManager{AWS: p}
-	p.PublicIPAddressManager = &PublicIPAddressManager{AWS: p}
-	p.Region = cfg.Region
-	p.RegionName = v.GetString("RegionName")
-	p.AvailabilityZone = v.GetString("AvailabilityZone")
+	p.AWSServices.PricingClient = pricing.New(pricingSession)
+	p.ImagesManager.Provider = p
+	p.NetworkManager.Provider = p
+	p.NetworkInterfaceManager.Provider = p
+	p.ServerManager.Provider = p
+	p.TemplateManager.Provider = p
+	p.VolumeManager.Provider = p
+	p.SecurityGroupManager.Provider = p
+	p.KeyPairManager.Provider = p
+	p.PublicIPAddressManager.Provider = p
+	p.Configuration.Region = cfg.Region
+	p.Configuration.RegionName = v.GetString("RegionName")
+	p.Configuration.AvailabilityZone = v.GetString("AvailabilityZone")
 	return nil
 
 }
 
-//DeviceName name of the provider
+//Name name of the provider
 func (p *Provider) Name() string {
-	return "AWS"
+	return "Provider"
 }
 
 //GetNetworkManager returns aws NetworkManager
 func (p *Provider) GetNetworkManager() api.NetworkManager {
-	return p.NetworkManager
+	return &p.NetworkManager
+}
+
+//GetNetworkInterfaceManager returns aws NetworkInterfaceManager
+func (p *Provider) GetNetworkInterfaceManager() api.NetworkInterfaceManager {
+	return &p.NetworkInterfaceManager
 }
 
 //GetImageManager returns aws ImageManager
 func (p *Provider) GetImageManager() api.ImageManager {
-	return p.ImagesManager
+	return &p.ImagesManager
 }
 
 //GetTemplateManager returns aws ServerTemplateManager
 func (p *Provider) GetTemplateManager() api.ServerTemplateManager {
-	return p.TemplateManager
+	return &p.TemplateManager
 }
 
 //GetSecurityGroupManager returns aws SecurityGroupManager
 func (p *Provider) GetSecurityGroupManager() api.SecurityGroupManager {
-	return p.SecurityGroupManager
+	return &p.SecurityGroupManager
 }
 
 //GetServerManager returns aws ServerManager
 func (p *Provider) GetServerManager() api.ServerManager {
-	return p.ServerManager
+	return &p.ServerManager
 }
 
 //GetVolumeManager returns aws OpenStack VolumeManager
 func (p *Provider) GetVolumeManager() api.VolumeManager {
-	return p.VolumeManager
+	return &p.VolumeManager
 }
 
-func (p *Provider) GetPublicIpAddressManager() api.PublicIPAddressManager {
-	return p.PublicIPAddressManager
+func (p *Provider) GetPublicIPAddressManager() api.PublicIPAddressManager {
+	return &p.PublicIPAddressManager
 }

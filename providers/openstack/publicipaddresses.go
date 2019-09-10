@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//NetworkManager defines networking functions a anyclouds provider must provide
+//PublicIPAddressManager openstack implementation of api.PublicIPAddressManager
 type PublicIPAddressManager struct {
 	OpenStack *Provider
 }
@@ -41,7 +41,7 @@ func (mgr *PublicIPAddressManager) ListAvailablePools() ([]api.PublicIPPool, err
 	return pools, nil
 }
 
-func (mgr *PublicIPAddressManager) ListAllocated() ([]api.PublicIP, error) {
+func (mgr *PublicIPAddressManager) List(options *api.ListPublicIPAddressOptions) ([]api.PublicIP, error) {
 	pages, err := floatingips.List(mgr.OpenStack.Network, floatingips.ListOpts{
 		Status: "ACTIVE",
 	}).AllPages()
@@ -55,7 +55,7 @@ func (mgr *PublicIPAddressManager) ListAllocated() ([]api.PublicIP, error) {
 
 	publicIPs := make([]api.PublicIP, len(fips))
 	for i, fip := range fips {
-		ip, err := mgr.toPublicIP(&fip)
+		ip, err := toPublicIP(&fip)
 		if err != nil {
 			return nil, errors.Wrap(ProviderError(err), "error listing available public ip address")
 		}
@@ -137,17 +137,17 @@ func (mgr *PublicIPAddressManager) listPorts(serverID string) ([]ports.Port, err
 	return portList, err
 }
 
-func (mgr *PublicIPAddressManager) Dissociate(publicIpID string) error {
-	pip, err := mgr.Get(publicIpID)
+func (mgr *PublicIPAddressManager) Dissociate(publicIPID string) error {
+	pip, err := mgr.Get(publicIPID)
 	if err != nil {
-		return errors.Wrapf(err, "error dissociating public ip address %s", publicIpID)
+		return errors.Wrapf(err, "error dissociating public ip address %s", publicIPID)
 	}
-	_, err = floatingips.Update(mgr.OpenStack.Network, publicIpID, floatingips.UpdateOpts{
+	_, err = floatingips.Update(mgr.OpenStack.Network, publicIPID, floatingips.UpdateOpts{
 		Description: &pip.Name,
 		PortID:      nil,
 		FixedIP:     "",
 	}).Extract()
-	return errors.Wrapf(err, "error dissociating public ip address %s", publicIpID)
+	return errors.Wrapf(err, "error dissociating public ip address %s", publicIPID)
 
 }
 func (mgr *PublicIPAddressManager) Release(publicIPId string) error {
@@ -155,42 +155,20 @@ func (mgr *PublicIPAddressManager) Release(publicIPId string) error {
 	return errors.Wrapf(err, "error releasing public ip address %s", publicIPId)
 }
 
-func (mgr *PublicIPAddressManager) Get(publicIpId string) (*api.PublicIP, error) {
-	fip, err := floatingips.Get(mgr.OpenStack.Network, publicIpId).Extract()
+func (mgr *PublicIPAddressManager) Get(publicIPID string) (*api.PublicIP, error) {
+	fip, err := floatingips.Get(mgr.OpenStack.Network, publicIPID).Extract()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error dissociating public ip address %s", publicIpId)
+		return nil, errors.Wrapf(err, "error dissociating public ip address %s", publicIPID)
 	}
-	return mgr.toPublicIP(fip)
+	return toPublicIP(fip)
 }
 
-func (mgr *PublicIPAddressManager) toPublicIP(fip *floatingips.FloatingIP) (*api.PublicIP, error) {
-	var ServerID, SubnetID string
-	var ps *ports.Port
-
-	if len(fip.PortID) > 0 {
-		var err error
-		ps, err = ports.Get(mgr.OpenStack.Network, fip.PortID).Extract()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if ps != nil {
-		ServerID = ps.DeviceID
-		//take the subnet matching fip fixed ip
-		for _, ip := range ps.FixedIPs {
-			if ip.IPAddress == fip.FixedIP {
-				SubnetID = ip.SubnetID
-				break
-			}
-		}
-	}
+func toPublicIP(fip *floatingips.FloatingIP) (*api.PublicIP, error) {
 	return &api.PublicIP{
-		ID:        fip.ID,
-		Name:      fip.Description,
-		Address:   fip.FloatingIP,
-		ServerID:  ServerID,
-		SubnetID:  SubnetID,
-		PrivateIP: fip.FixedIP,
+		ID:                 fip.ID,
+		Name:               fip.Description,
+		Address:            fip.FloatingIP,
+		NetworkInterfaceID: fip.PortID,
+		PrivateAddress:     fip.FixedIP,
 	}, nil
 }

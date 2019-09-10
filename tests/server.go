@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-//TemplateManagerTestSuite test suite off api.Temp
+//ServerManagerTestSuite test suite of api.ServerManager
 type ServerManagerTestSuite struct {
 	suite.Suite
 	Prov api.Provider
@@ -112,9 +112,8 @@ func (s *ServerManagerTestSuite) SelectTemplate(tpm api.ServerTemplateManager) (
 	selected := talgo.Select(len(indexes), func(i, j int) int {
 		if weight(tpls[indexes[i]]) < weight(tpls[indexes[j]]) {
 			return i
-		} else {
-			return j
 		}
+		return j
 	})
 	return &tpls[indexes[selected]], nil
 }
@@ -139,7 +138,7 @@ func (s *ServerManagerTestSuite) FindImage(imm api.ImageManager, tpl *api.Server
 	return nil, errors.Errorf("Enable to fin image fitting template %s", tpl.Name)
 }
 
-//TestServerTemplateManager Canonical test for ServerTemplateManager implementation
+//TestServerManagerOnDemandInstance Canonical test for ServerTemplateManager implementation
 func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
@@ -162,30 +161,40 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 
 	srvMgr := s.Prov.GetServerManager()
 	server, err := srvMgr.Create(&api.CreateServerOptions{
-		Name:       "test_server",
-		TemplateID: tpl.ID,
-		ImageID:    img.ID,
-		SecurityGroups: []string{
-			sg.ID,
+		Name:                 "test_server",
+		TemplateID:           tpl.ID,
+		ImageID:              img.ID,
+		DefaultSecurityGroup: sg.ID,
+		Subnets: []api.Subnet{
+			*subnet,
 		},
-		Subnets: []string{
-			subnet.ID,
-		},
-		PublicIP:        true,
 		BootstrapScript: nil,
 		KeyPair:         kp,
 	})
 	assert.NoError(s.T(), err)
-
+	publicIP, err := s.Prov.GetPublicIPAddressManager().Allocate(&api.PublicIPAllocationOptions{
+		Name: "ip",
+	})
+	assert.NoError(s.T(), err)
+	err = s.Prov.GetPublicIPAddressManager().Associate(&api.PublicIPAssociationOptions{
+		PublicIPId: publicIP.ID,
+		ServerID:   server.ID,
+		SubnetID:   subnet.ID,
+	})
+	assert.NoError(s.T(), err)
+	nis, err := s.Prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{
+		ServerID: &server.ID,
+	})
 	assert.Equal(s.T(), server.Name, "test_server")
 	assert.Equal(s.T(), server.ImageID, img.ID)
-	assert.Equal(s.T(), len(server.PrivateIPs[api.IPVersion4]), 1)
+
 	assert.Equal(s.T(), server.State, api.ServerReady)
 	assert.Equal(s.T(), server.LeasingType, api.LeasingTypeOnDemand)
-	assert.NotEmpty(s.T(), server.PublicIPv4)
-	assert.Equal(s.T(), server.SecurityGroups[0], sg.ID)
+	assert.NotEmpty(s.T(), nis[0].PublicIPAddress)
 	assert.Equal(s.T(), server.TemplateID, tpl.ID)
 	err = srvMgr.Delete(server.ID)
+	assert.NoError(s.T(), err)
+	err = s.Prov.GetPublicIPAddressManager().Release(publicIP.ID)
 	assert.NoError(s.T(), err)
 	err = sgm.Delete(sg.ID)
 	assert.NoError(s.T(), err)
@@ -195,7 +204,7 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	assert.NoError(s.T(), err)
 }
 
-//TestServerTemplateManager Canonical test for ServerTemplateManager implementation
+//TestServerManagerSpotInstance Canonical test for ServerTemplateManager implementation
 func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
@@ -218,16 +227,13 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 
 	srvMgr := s.Prov.GetServerManager()
 	server, err := srvMgr.Create(&api.CreateServerOptions{
-		Name:       "test_server",
-		TemplateID: tpl.ID,
-		ImageID:    img.ID,
-		SecurityGroups: []string{
-			sg.ID,
+		Name:                 "test_server",
+		TemplateID:           tpl.ID,
+		ImageID:              img.ID,
+		DefaultSecurityGroup: sg.ID,
+		Subnets: []api.Subnet{
+			*subnet,
 		},
-		Subnets: []string{
-			subnet.ID,
-		},
-		PublicIP:        true,
 		BootstrapScript: nil,
 		KeyPair:         kp,
 		SpotServerOptions: &api.SpotServerOptions{
@@ -236,18 +242,25 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		},
 	})
 	assert.NoError(s.T(), err)
+	publicIP, err := s.Prov.GetPublicIPAddressManager().Allocate(&api.PublicIPAllocationOptions{
+		Name: "ip",
+	})
+	assert.NoError(s.T(), err)
+	err = s.Prov.GetPublicIPAddressManager().Associate(&api.PublicIPAssociationOptions{
+		PublicIPId: publicIP.ID,
+		ServerID:   server.ID,
+		SubnetID:   subnet.ID,
+	})
+	assert.NoError(s.T(), err)
+	nis, err := s.Prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{
+		ServerID: &server.ID,
+	})
 	assert.Equal(s.T(), server.Name, "test_server")
 	assert.Equal(s.T(), server.ImageID, img.ID)
-	assert.Equal(s.T(), len(server.PrivateIPs[api.IPVersion4]), 1)
-	assert.Equal(s.T(), server.State, api.ServerReady)
-	assert.Equal(s.T(), server.LeasingType, api.LeasingTypeOnDemand)
-	assert.NotEmpty(s.T(), server.PublicIPv4)
-	assert.Equal(s.T(), server.SecurityGroups[0], sg.ID)
-	assert.Equal(s.T(), server.TemplateID, tpl.ID)
 
 	auth, err := kp.AuthMethod()
 	clt, err := sshutils.CreateClient(&sshutils.SSHConfig{
-		Addr: fmt.Sprintf("%s:%d", server.PublicIPv4, 22),
+		Addr: fmt.Sprintf("%s:%d", nis[0].PublicIPAddress, 22),
 		ClientConfig: &ssh.ClientConfig{
 			Config:          ssh.Config{},
 			User:            "ubuntu",
@@ -257,18 +270,23 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		},
 		Proxy: nil,
 	})
-	println(fmt.Sprintf("%s:%d", server.PublicIPv4, 22))
+	println(fmt.Sprintf("%s:%d", nis[0].PublicIPAddress, 22))
 	assert.NoError(s.T(), err)
-	session, err := clt.NewSession()
-	assert.NoError(s.T(), err)
-	resp, err := session.Output("hostname")
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), resp)
-	fmt.Println("hostname", string(resp))
-	_ = session.Close()
+	if clt != nil {
+		session, err := clt.NewSession()
+		assert.NoError(s.T(), err)
+		resp, err := session.Output("hostname")
+		assert.NoError(s.T(), err)
+		assert.NotEmpty(s.T(), resp)
+		fmt.Println("hostname", string(resp))
+		_ = session.Close()
+	}
+
 	err = srvMgr.Delete(server.ID)
 	assert.NoError(s.T(), err)
 	err = WilfulDelete(sgm.Delete, sg.ID)
+	assert.NoError(s.T(), err)
+	err = s.Prov.GetPublicIPAddressManager().Release(publicIP.ID)
 	assert.NoError(s.T(), err)
 	err = netm.DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(s.T(), err)

@@ -13,11 +13,11 @@ type ImageManager struct {
 	Provider *Provider
 }
 
-func createId(publisher, offer, sku, version string) string {
+func createImageID(publisher, offer, sku, version string) string {
 	return fmt.Sprintf("%s##%s##%s##%s", publisher, offer, sku, version)
 }
 
-func ParseId(id string) (publisher, offer, sku, version string) {
+func parseImageID(id string) (publisher, offer, sku, version string) {
 	tokens := strings.Split(id, "##")
 	publisher = tokens[0]
 	offer = tokens[1]
@@ -52,7 +52,7 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 					//	return nil, errors.Wrap(err, "error listing images")
 					//}
 					//
-					id := createId(publisher, *offer.Name, *sku.Name, *version.Name)
+					id := createImageID(publisher, *offer.Name, *sku.Name, *version.Name)
 					images = append(images, api.Image{
 						ID:        id,
 						Name:      id,
@@ -71,7 +71,7 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 
 func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 	cfg := mgr.Provider.Configuration
-	publisher, offer, sku, version := ParseId(id)
+	publisher, offer, sku, version := parseImageID(id)
 	_, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, offer, sku, version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting images")

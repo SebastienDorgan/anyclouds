@@ -3,6 +3,7 @@ package azure
 import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/commerce/mgmt/commerce"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -23,12 +24,16 @@ type Provider struct {
 	SecurityGroupsClient       network.SecurityGroupsClient
 	VirtualMachinesClient      compute.VirtualMachinesClient
 	InterfacesClient           network.InterfacesClient
+	RateCardClient             commerce.RateCardClient
+	PublicIPAddressesClient    network.PublicIPAddressesClient
 
-	ImageManager          *ImageManager
-	ServerTemplateManager *ServerTemplateManager
-	NetworkManager        *NetworkManager
-	SecurityGroupManager  *SecurityGroupManager
-	ServerManager         *ServerManager
+	ImageManager             *ImageManager
+	ServerTemplateManager    *ServerTemplateManager
+	NetworkManager           *NetworkManager
+	SecurityGroupManager     *SecurityGroupManager
+	ServerManager            *ServerManager
+	NetworkInterfacesManager *NetworkInterfacesManager
+	PublicIPAddressManager   *PublicIPAddressManager
 }
 
 type Config struct {
@@ -42,10 +47,15 @@ type Config struct {
 	UserAgent                     string
 	Location                      string
 	VirtualMachineImagePublishers []string
+	DefaultVMUserName             string
 	ResourceGroupName             string
+	OfferNumber                   string
+	Currency                      string
+	RegionInfo                    string
 }
 
 func (p *Provider) Init(config io.Reader, format string) error {
+
 	v := viper.New()
 	v.SetConfigType(format)
 	err := v.ReadConfig(config)
@@ -68,7 +78,6 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
-	p.ImageManager = &ImageManager{Provider: p}
 
 	p.VirtualMachineSizesClient = compute.NewVirtualMachineSizesClient(cfg.SubscriptionID)
 	p.VirtualMachineSizesClient.Authorizer = p.Authorizer
@@ -76,7 +85,6 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
-	p.ServerTemplateManager = &ServerTemplateManager{Provider: p}
 
 	p.VirtualNetworksClient = network.NewVirtualNetworksClient(cfg.SubscriptionID)
 	p.VirtualNetworksClient.Authorizer = p.Authorizer
@@ -87,12 +95,10 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.SubnetsClient = network.NewSubnetsClient(cfg.SubscriptionID)
 	p.SubnetsClient.Authorizer = p.Authorizer
 	err = p.SubnetsClient.AddToUserAgent(cfg.UserAgent)
-	p.NetworkManager = &NetworkManager{Provider: p}
 
 	p.SecurityGroupsClient = network.NewSecurityGroupsClient(cfg.SubscriptionID)
 	p.SecurityGroupsClient.Authorizer = p.Authorizer
 	err = p.SecurityGroupsClient.AddToUserAgent(cfg.UserAgent)
-	p.SecurityGroupManager = &SecurityGroupManager{Provider: p}
 
 	p.VirtualMachinesClient = compute.NewVirtualMachinesClient(cfg.SubscriptionID)
 	p.VirtualMachinesClient.Authorizer = p.Authorizer
@@ -100,7 +106,29 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
+
+	p.RateCardClient = commerce.NewRateCardClient(cfg.SubscriptionID)
+	p.RateCardClient.Authorizer = p.Authorizer
+	err = p.RateCardClient.AddToUserAgent(cfg.UserAgent)
+	if err != nil {
+		return errors.Wrap(err, "error initializing azure provider")
+	}
+
+	p.PublicIPAddressesClient = network.NewPublicIPAddressesClient(cfg.SubscriptionID)
+	p.PublicIPAddressesClient.Authorizer = p.Authorizer
+	err = p.PublicIPAddressesClient.AddToUserAgent(cfg.UserAgent)
+	if err != nil {
+		return errors.Wrap(err, "error initializing azure provider")
+	}
+
+	p.ImageManager = &ImageManager{Provider: p}
+	p.ServerTemplateManager = &ServerTemplateManager{Provider: p}
+	p.NetworkManager = &NetworkManager{Provider: p}
+	p.SecurityGroupManager = &SecurityGroupManager{Provider: p}
 	p.ServerManager = &ServerManager{Provider: p}
+	p.NetworkInterfacesManager = &NetworkInterfacesManager{Provider: p}
+	p.PublicIPAddressManager = &PublicIPAddressManager{Provider: p}
+
 	return nil
 }
 
@@ -110,20 +138,20 @@ func getAuthorizerForResource(config *Config) (autorest.Authorizer, error) {
 		deviceconfig.Resource = config.ResourceManagerEndpoint
 		return deviceconfig.Authorizer()
 
-	} else {
-		oauthConfig, err := adal.NewOAuthConfig(
-			config.ActiveDirectoryEndpoint, config.TenantID)
-		if err != nil {
-			return nil, err
-		}
-
-		token, err := adal.NewServicePrincipalToken(
-			*oauthConfig, config.ClientID, config.ClientSecret, config.ResourceManagerEndpoint)
-		if err != nil {
-			return nil, err
-		}
-		return autorest.NewBearerAuthorizer(token), nil
 	}
+	oauthConfig, err := adal.NewOAuthConfig(
+		config.ActiveDirectoryEndpoint, config.TenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := adal.NewServicePrincipalToken(
+		*oauthConfig, config.ClientID, config.ClientSecret, config.ResourceManagerEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	return autorest.NewBearerAuthorizer(token), nil
+
 }
 
 func (p *Provider) GetNetworkManager() api.NetworkManager {
@@ -146,10 +174,14 @@ func (p *Provider) GetServerManager() api.ServerManager {
 	return p.ServerManager
 }
 
+func (p *Provider) GetNetworkInterfaceManager() api.NetworkInterfaceManager {
+	return p.NetworkInterfacesManager
+}
+
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	panic("implement me")
 }
 
-func (p *Provider) GetPublicIpAddressManager() api.PublicIPAddressManager {
-	panic("implement me")
+func (p *Provider) GetPublicIPAddressManager() api.PublicIPAddressManager {
+	return p.PublicIPAddressManager
 }

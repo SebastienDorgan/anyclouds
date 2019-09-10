@@ -15,6 +15,9 @@ require (
 	github.com/gophercloud/gophercloud v0.4.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/sethvargo/go-password v0.1.2
+	github.com/shopspring/decimal v0.0.0-20190905144223-a36b5d85f337 // indirect
 	github.com/spf13/afero v1.2.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.3.1

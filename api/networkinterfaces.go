@@ -2,39 +2,49 @@ package api
 
 //NetworkInterface represents an network interface card
 type NetworkInterface struct {
-	ID         string
-	Name       string
-	MacAddress string
-	NetworkID  string
-	SubnetID   string
-	ServerID   string
-	IPAddress  string
-	Primary    bool
+	ID               string
+	Name             string
+	MacAddress       string
+	NetworkID        string
+	SubnetID         string
+	ServerID         string
+	PublicIPAddress  string
+	PrivateIPAddress string
+	SecurityGroupID  string
 }
 
-//NetworkInterfaceOptions options that can be used to create a network interface card
-type NetworkInterfaceOptions struct {
+//CreateNetworkInterfaceOptions options that can be used to create a network interface card
+type CreateNetworkInterfaceOptions struct {
 	Name            string
 	NetworkID       string
 	SubnetID        string
-	ServerID        string
+	ServerID        *string
 	SecurityGroupID string
 	Primary         bool
 	IPAddress       *string
 }
 
-//NetworkInterfacesUpdateOptions options can be used to update a network interface card
-type NetworkInterfacesUpdateOptions struct {
+//UpdateNetworkInterfacesOptions options can be used to update a network interface card
+type UpdateNetworkInterfacesOptions struct {
 	ID              string
 	ServerID        *string
 	SecurityGroupID *string
 }
 
+//ListNetworkInterfacesOptions options can be used to list network interface cards
+type ListNetworkInterfacesOptions struct {
+	NetworkID        *string
+	SubnetID         *string
+	ServerID         *string
+	SecurityGroupID  *string
+	PrivateIPAddress *string
+}
+
 //NetworkInterfaceManager an interface providing an abastraction to manipulate network interface cards
 type NetworkInterfaceManager interface {
-	Create(options *NetworkInterfaceOptions) (*NetworkInterface, error)
+	Create(options *CreateNetworkInterfaceOptions) (*NetworkInterface, error)
 	Delete(id string) error
 	Get(id string) (*NetworkInterface, error)
-	List() ([]NetworkInterface, error)
-	Update(options *NetworkInterfacesUpdateOptions) (*NetworkInterface, error)
+	List(options *ListNetworkInterfacesOptions) ([]NetworkInterface, error)
+	Update(options *UpdateNetworkInterfacesOptions) (*NetworkInterface, error)
 }

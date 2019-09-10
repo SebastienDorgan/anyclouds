@@ -2,12 +2,11 @@ package api
 
 //PublicIP represent a public ip address
 type PublicIP struct {
-	ID        string
-	Name      string
-	Address   string
-	ServerID  string
-	SubnetID  string
-	PrivateIP string
+	ID                 string
+	Name               string
+	Address            string
+	NetworkInterfaceID string
+	PrivateAddress     string
 }
 
 //PublicIPAllocationOptions options that can be used to allocate a public ip address
@@ -40,10 +39,14 @@ type PublicIPPool struct {
 	Ranges []AddressRange
 }
 
+type ListPublicIPAddressOptions struct {
+	ServerID *string
+}
+
 //PublicIPAddressManager an interface providing an abastraction to manipulate public ip addresses
 type PublicIPAddressManager interface {
 	ListAvailablePools() ([]PublicIPPool, error)
-	ListAllocated() ([]PublicIP, error)
+	List(options *ListPublicIPAddressOptions) ([]PublicIP, error)
 	Allocate(options *PublicIPAllocationOptions) (*PublicIP, error)
 	Associate(options *PublicIPAssociationOptions) error
 	Dissociate(publicIPId string) error

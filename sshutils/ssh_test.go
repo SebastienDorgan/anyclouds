@@ -1,15 +1,18 @@
 package sshutils_test
 
 import (
+	"fmt"
 	"github.com/SebastienDorgan/anyclouds/sshutils"
+	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"testing"
 )
 
 func TestCreateKeyPair(t *testing.T) {
 	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(t, err)
-	_ = ioutil.WriteFile("public_key", kp.PublicKey, 0644)
-	_ = ioutil.WriteFile("private_key", kp.PrivateKey, 0644)
+	assert.NotNil(t, kp.PublicKey)
+	assert.NotNil(t, kp.PrivateKey)
+	fmt.Println(len(kp.PrivateKey), len(kp.PublicKey))
+	fmt.Println(password.MustGenerate(16, 5, 5, false, false))
 }

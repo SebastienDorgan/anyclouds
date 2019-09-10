@@ -2,7 +2,7 @@ package api
 
 import "io"
 
-//Provider define a cloud provider
+//Provider implement api.Provider for Provider
 type Provider interface {
 	Init(config io.Reader, format string) error
 	GetNetworkManager() NetworkManager
@@ -11,5 +11,6 @@ type Provider interface {
 	GetSecurityGroupManager() SecurityGroupManager
 	GetServerManager() ServerManager
 	GetVolumeManager() VolumeManager
-	GetPublicIpAddressManager() PublicIPAddressManager
+	GetPublicIPAddressManager() PublicIPAddressManager
+	GetNetworkInterfaceManager() NetworkInterfaceManager
 }

@@ -8,12 +8,12 @@ import (
 
 //KeyPairManager openstack implementation of api.KeyPairManager
 type KeyPairManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 //Import load a public key
 func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
-	_, err := mgr.AWS.EC2Client.ImportKeyPair(&ec2.ImportKeyPairInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.ImportKeyPair(&ec2.ImportKeyPairInput{
 		DryRun:            aws.Bool(false),
 		KeyName:           aws.String(name),
 		PublicKeyMaterial: publicKey,
@@ -23,7 +23,7 @@ func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 
 //Delete a key pair
 func (mgr *KeyPairManager) Delete(name string) error {
-	_, err := mgr.AWS.EC2Client.DeleteKeyPair(&ec2.DeleteKeyPairInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.DeleteKeyPair(&ec2.DeleteKeyPairInput{
 		DryRun:  aws.Bool(false),
 		KeyName: aws.String(name),
 	})

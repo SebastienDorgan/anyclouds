@@ -22,7 +22,7 @@ func GetProvider() *aws.Provider {
 	return &provider
 }
 
-//TestCreate create AWS provider
+//TestCreate create Provider provider
 func TestCreate(t *testing.T) {
 	var provider aws.Provider
 	usr, _ := user.Current()

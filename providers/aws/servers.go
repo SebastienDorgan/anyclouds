@@ -3,7 +3,6 @@ package aws
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/SebastienDorgan/retry"
 	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
@@ -17,9 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-//ServerManager defines Server management functions for AWS using EC2 interface
+//ServerManager defines Server management functions for Provider using EC2 interface
 type ServerManager struct {
-	AWS *Provider
+	Provider *Provider
 }
 
 func networkInterfaces(options *api.CreateServerOptions) []*ec2.InstanceNetworkInterfaceSpecification {
@@ -37,7 +36,7 @@ func networkInterfaces(options *api.CreateServerOptions) []*ec2.InstanceNetworkI
 			PrivateIpAddress:               nil,
 			PrivateIpAddresses:             nil,
 			SecondaryPrivateIpAddressCount: nil,
-			SubnetId:                       aws.String(sn),
+			SubnetId:                       aws.String(sn.ID),
 		}
 		out = append(out, &ni)
 	}
@@ -58,7 +57,7 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions, k
 			InstanceType: aws.String(options.TemplateID),
 			KeyName:      aws.String(keyName),
 			Placement: &ec2.SpotPlacement{
-				AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
+				AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 			},
 			NetworkInterfaces: networkInterfaces(options),
 			UserData:          toString(options.BootstrapScript),
@@ -68,27 +67,27 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions, k
 		Type:                 aws.String("one-time"),
 	}
 
-	out, err := mgr.AWS.EC2Client.RequestSpotInstances(input)
+	out, err := mgr.Provider.AWSServices.EC2Client.RequestSpotInstances(input)
 	if err != nil || out.SpotInstanceRequests == nil {
 		return nil, errors.Wrap(err, "Error creating spot instance")
 	}
 
 	req := out.SpotInstanceRequests[0]
-	err = mgr.AWS.EC2Client.WaitUntilSpotInstanceRequestFulfilled(&ec2.DescribeSpotInstanceRequestsInput{
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilSpotInstanceRequestFulfilled(&ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{req.SpotInstanceRequestId},
 	})
 	if err != nil {
-		_, _ = mgr.AWS.EC2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
+		_, _ = mgr.Provider.AWSServices.EC2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: []*string{req.SpotInstanceRequestId},
 		})
 		return nil, errors.Wrap(err, "error creating spot instance")
 	}
-	return mgr.getSpotInstanceId(req)
+	return mgr.getSpotInstanceID(req)
 
 }
 
-func (mgr *ServerManager) getSpotInstanceId(req *ec2.SpotInstanceRequest) (*string, error) {
-	out2, err := mgr.AWS.EC2Client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+func (mgr *ServerManager) getSpotInstanceID(req *ec2.SpotInstanceRequest) (*string, error) {
+	out2, err := mgr.Provider.AWSServices.EC2Client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{req.SpotInstanceRequestId},
 	})
 	if err != nil {
@@ -110,14 +109,14 @@ func toString(reader io.Reader) *string {
 
 func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOptions, keyName string) (*string, error) {
 
-	out, err := mgr.AWS.EC2Client.RunInstances(&ec2.RunInstancesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.RunInstances(&ec2.RunInstancesInput{
 		ImageId:           aws.String(options.ImageID),
 		InstanceType:      aws.String(options.TemplateID),
 		KeyName:           aws.String(keyName),
 		NetworkInterfaces: networkInterfaces(options),
 		UserData:          toString(options.BootstrapScript),
 		Placement: &ec2.Placement{
-			AvailabilityZone: aws.String(mgr.AWS.AvailabilityZone),
+			AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		},
 		MinCount: aws.Int64(1),
 		MaxCount: aws.Int64(1),
@@ -132,15 +131,15 @@ func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOption
 }
 
 func (mgr *ServerManager) searchReservedInstanceOffering(options *api.CreateServerOptions) (*ec2.ReservedInstancesOffering, error) {
-	tpl, err := mgr.AWS.TemplateManager.Get(options.TemplateID)
+	tpl, err := mgr.Provider.TemplateManager.Get(options.TemplateID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Invalid template ID %s", options.TemplateID)
 	}
 	if tpl == nil {
 		return nil, errors.Errorf("Unknow error getting server template %s", options.TemplateID)
 	}
-	out, err := mgr.AWS.EC2Client.DescribeReservedInstancesOfferings(&ec2.DescribeReservedInstancesOfferingsInput{
-		AvailabilityZone:             aws.String(mgr.AWS.Region),
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeReservedInstancesOfferings(&ec2.DescribeReservedInstancesOfferingsInput{
+		AvailabilityZone:             aws.String(mgr.Provider.Configuration.Region),
 		DryRun:                       aws.Bool(false),
 		Filters:                      nil,
 		IncludeMarketplace:           aws.Bool(false),
@@ -180,7 +179,7 @@ func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOption
 			"Error creating reserved instance")
 	}
 
-	out, err := mgr.AWS.EC2Client.PurchaseReservedInstancesOffering(&ec2.PurchaseReservedInstancesOfferingInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.PurchaseReservedInstancesOffering(&ec2.PurchaseReservedInstancesOfferingInput{
 		DryRun:                      aws.Bool(false),
 		InstanceCount:               aws.Int64(1),
 		LimitPrice:                  nil,
@@ -195,45 +194,6 @@ func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOption
 	return out.ReservedInstancesId, nil
 }
 
-func (mgr *ServerManager) getInstance(instanceID string) retry.Action {
-	return func() (v interface{}, e error) {
-		return mgr.Get(instanceID)
-	}
-}
-
-func (mgr *ServerManager) serverReady() retry.Condition {
-	return func(v interface{}, e error) bool {
-		if e != nil {
-			return false
-		}
-		return v.(*api.Server).State == api.ServerReady
-	}
-}
-
-func (mgr *ServerManager) associatePublicAddress(instanceID string) (string, error) {
-	err := mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
-		InstanceIds: []*string{aws.String(instanceID)},
-	})
-
-	if err != nil {
-		return "", err
-	}
-	allocRes, err := mgr.AWS.EC2Client.AllocateAddress(&ec2.AllocateAddressInput{
-		Domain: aws.String("vpc"),
-	})
-	if err != nil {
-		return "", err
-	}
-	_, err = mgr.AWS.EC2Client.AssociateAddress(&ec2.AssociateAddressInput{
-		AllocationId: allocRes.AllocationId,
-		InstanceId:   aws.String(instanceID),
-	})
-	if err != nil {
-		return "", err
-	}
-	return *allocRes.PublicIp, err
-}
-
 //Create creates an Server with options
 func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
 	var id *string
@@ -242,8 +202,8 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 		return nil, errors.Errorf("error creating server: SpotServerOptions and ReservedServerOptions are exclusive")
 	}
 	keyName := uuid.New().String()
-	err = mgr.AWS.KeyPairManager.Import(keyName, options.KeyPair.PublicKey)
-	defer func() { _ = mgr.AWS.KeyPairManager.Delete(keyName) }()
+	err = mgr.Provider.KeyPairManager.Import(keyName, options.KeyPair.PublicKey)
+	defer func() { _ = mgr.Provider.KeyPairManager.Delete(keyName) }()
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
@@ -257,7 +217,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
-	err = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
 		InstanceIds: []*string{id},
 	})
 
@@ -265,7 +225,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
-	err = mgr.AWS.AddTags(*id, map[string]string{"name": options.Name})
+	err = mgr.Provider.AddTags(*id, map[string]string{"name": options.Name})
 	if err != nil {
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
@@ -275,14 +235,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
-	if options.PublicIP {
-		_, err = mgr.associatePublicAddress(*id)
-		if err != nil {
-			_ = mgr.Delete(*id)
-			return nil, errors.Wrapf(err, "error creating server %s", options.Name)
-		}
-	}
-	err = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
 		InstanceIds: []*string{id},
 	})
 	if err != nil {
@@ -293,22 +246,17 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 
 }
 
-func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, instanceId string) error {
-	if len(options.SecurityGroups) == 0 {
+func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, instanceID string) error {
+	if len(options.DefaultSecurityGroup) == 0 {
 		return nil
 	}
-	var err error
-	for _, sg := range options.SecurityGroups {
-		_, err = mgr.AWS.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-			Groups:     []*string{aws.String(sg)},
-			InstanceId: aws.String(instanceId),
-		})
-		if err != nil {
-			return err
-		}
-	}
-	err = mgr.AWS.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
-		InstanceIds: []*string{&instanceId},
+	_, err := mgr.Provider.AWSServices.EC2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
+		Groups:     []*string{aws.String(options.DefaultSecurityGroup)},
+		InstanceId: aws.String(instanceID),
+	})
+
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
+		InstanceIds: []*string{&instanceID},
 	})
 	if err != nil {
 		return err
@@ -318,66 +266,26 @@ func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, in
 
 //Delete delete Server identified by id
 func (mgr *ServerManager) Delete(id string) error {
-	srv, err := mgr.Get(id)
-	releaseAddress := false
-	if err == nil {
-		//the server is associated to an elastic ip
-		if len(srv.PublicIPv4) > 0 || len(srv.AccessIPv6) > 0 {
-			releaseAddress = true
-		}
+	publicIps, err := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPAddressOptions{ServerID: &id})
+	if err != nil {
+		return errors.Wrapf(err, "error deleting instance %s", id)
 	}
-	_, err = mgr.AWS.EC2Client.TerminateInstances(&ec2.TerminateInstancesInput{
+	for _, ip := range publicIps {
+		_ = mgr.Provider.PublicIPAddressManager.Dissociate(ip.ID)
+	}
+
+	_, err = mgr.Provider.AWSServices.EC2Client.TerminateInstances(&ec2.TerminateInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
 
-	if releaseAddress {
-		err = mgr.releaseAddress(srv)
-		if err != nil {
-			return errors.Wrapf(err, "error deleting instance %s", id)
-		}
-
-	}
-	err = mgr.AWS.EC2Client.WaitUntilInstanceTerminated(&ec2.DescribeInstancesInput{
+	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceTerminated(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
 	return errors.Wrapf(err, "error deleting instance %s", id)
 }
 
-func (mgr *ServerManager) releaseAddress(srv *api.Server) error {
-	out, err := mgr.AWS.EC2Client.DescribeAddresses(&ec2.DescribeAddressesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("instance-id"),
-				Values: []*string{aws.String(srv.ID)},
-			},
-		},
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error releasing elastic ip of instance %s", srv.ID)
-	}
-	if out == nil || out.Addresses == nil {
-		return errors.Errorf("error releasing elastic ip of instance %s", srv.ID)
-	}
-	for _, addr := range out.Addresses {
-		if *addr.PublicIp != srv.PublicIPv4 && *addr.PublicIp != srv.AccessIPv6 {
-			continue
-		}
-		_, err := mgr.AWS.EC2Client.DisassociateAddress(&ec2.DisassociateAddressInput{
-			AssociationId: addr.AssociationId,
-		})
-		_, err = mgr.AWS.EC2Client.ReleaseAddress(&ec2.ReleaseAddressInput{
-			AllocationId: addr.AllocationId,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "error releasing elastic ip of instance %s", srv.ID)
-		}
-		return nil
-	}
-	return nil
-}
-
 func (mgr *ServerManager) getReservedInstances() ([]*ec2.ReservedInstances, error) {
-	out, err := mgr.AWS.EC2Client.DescribeReservedInstances(&ec2.DescribeReservedInstancesInput{})
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeReservedInstances(&ec2.DescribeReservedInstancesInput{})
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +305,7 @@ func mapToSlice(in map[string]*api.Server) []api.Server {
 
 //List list Servers
 func (mgr *ServerManager) List() ([]api.Server, error) {
-	out, err := mgr.AWS.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing instances")
 	}
@@ -424,19 +332,6 @@ func (mgr *ServerManager) List() ([]api.Server, error) {
 	}
 
 	return mapToSlice(serverMap), nil
-}
-
-func ips(in []*ec2.InstanceNetworkInterface) map[api.IPVersion][]string {
-	ipMap := make(map[api.IPVersion][]string)
-	ipMap[api.IPVersion4] = []string{}
-	ipMap[api.IPVersion6] = []string{}
-	for _, netIF := range in {
-		ipMap[api.IPVersion4] = append(ipMap[api.IPVersion4], *netIF.PrivateIpAddress)
-		for _, v6ip := range netIF.Ipv6Addresses {
-			ipMap[api.IPVersion6] = append(ipMap[api.IPVersion6], *v6ip.Ipv6Address)
-		}
-	}
-	return ipMap
 }
 
 func codeValue(code *int64) uint8 {
@@ -466,13 +361,7 @@ func state(in *ec2.InstanceState) api.ServerState {
 		return api.ServerInError
 	}
 }
-func groupsIds(in []*ec2.GroupIdentifier) []string {
-	var result []string
-	for _, g := range in {
-		result = append(result, *g.GroupId)
-	}
-	return result
-}
+
 func server(instance *ec2.Instance) *api.Server {
 	name := ""
 	n := sort.Search(len(instance.Tags), func(i int) bool {
@@ -485,26 +374,20 @@ func server(instance *ec2.Instance) *api.Server {
 	if instance.SpotInstanceRequestId != nil {
 		leasingType = api.LeasingTypeOnDemand
 	}
-	publicIPv4 := ""
-	if instance.PublicIpAddress != nil {
-		publicIPv4 = *instance.PublicIpAddress
-	}
+
 	return &api.Server{
-		ID:             *instance.InstanceId,
-		Name:           name,
-		ImageID:        *instance.ImageId,
-		TemplateID:     *instance.InstanceType,
-		SecurityGroups: groupsIds(instance.SecurityGroups),
-		PrivateIPs:     ips(instance.NetworkInterfaces),
-		PublicIPv4:     publicIPv4,
-		State:          state(instance.State),
-		CreatedAt:      *instance.LaunchTime,
-		LeasingType:    leasingType,
+		ID:          *instance.InstanceId,
+		Name:        name,
+		ImageID:     *instance.ImageId,
+		TemplateID:  *instance.InstanceType,
+		State:       state(instance.State),
+		CreatedAt:   *instance.LaunchTime,
+		LeasingType: leasingType,
 	}
 }
 
 func (mgr *ServerManager) getReservedInstance(id string) (*ec2.ReservedInstances, error) {
-	out, err := mgr.AWS.EC2Client.DescribeReservedInstances(&ec2.DescribeReservedInstancesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeReservedInstances(&ec2.DescribeReservedInstancesInput{
 		ReservedInstancesIds: []*string{aws.String(id)},
 	})
 	if err != nil {
@@ -519,7 +402,7 @@ func (mgr *ServerManager) getReservedInstance(id string) (*ec2.ReservedInstances
 //Get get Servers
 func (mgr *ServerManager) Get(id string) (*api.Server, error) {
 
-	out, err := mgr.AWS.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			aws.String(id),
 		},
@@ -544,7 +427,7 @@ func (mgr *ServerManager) Get(id string) (*api.Server, error) {
 
 //Start starts an Server
 func (mgr *ServerManager) Start(id string) error {
-	_, err := mgr.AWS.EC2Client.StartInstances(&ec2.StartInstancesInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.StartInstances(&ec2.StartInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
 	if err != nil {
@@ -555,7 +438,7 @@ func (mgr *ServerManager) Start(id string) error {
 
 //Stop stops an Server
 func (mgr *ServerManager) Stop(id string) error {
-	_, err := mgr.AWS.EC2Client.StopInstances(&ec2.StopInstancesInput{
+	_, err := mgr.Provider.AWSServices.EC2Client.StopInstances(&ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
 	if err != nil {
@@ -566,7 +449,7 @@ func (mgr *ServerManager) Stop(id string) error {
 
 //Resize resize a server
 func (mgr *ServerManager) Resize(id string, templateID string) error {
-	_, err := mgr.AWS.OpsWorksClient.UpdateInstance(&opsworks.UpdateInstanceInput{})
+	_, err := mgr.Provider.AWSServices.OpsWorksClient.UpdateInstance(&opsworks.UpdateInstanceInput{})
 	if err != nil {
 		return errors.Wrapf(err, "Error resizing instance %s", id)
 	}

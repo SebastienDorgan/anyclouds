@@ -34,9 +34,8 @@ func (s *VolumeManagerTestSuite) SelectTemplate() (*api.ServerTemplate, error) {
 	selected := talgo.Select(len(indexes), func(i, j int) int {
 		if tpls[indexes[i]].OneDemandPrice < tpls[indexes[j]].OneDemandPrice {
 			return i
-		} else {
-			return j
 		}
+		return j
 	})
 	return &tpls[indexes[selected]], nil
 }
@@ -101,15 +100,24 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 		Name:            "instance_with_volume",
 		TemplateID:      tpl.ID,
 		ImageID:         img.ID,
-		Subnets:         []string{sn.ID},
-		PublicIP:        true,
+		Subnets:         []api.Subnet{*sn},
 		BootstrapScript: nil,
 		KeyPair:         kp,
 	})
 	assert.NoError(s.T(), err)
-
+	ni, err := s.Prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{
+		NetworkID: &n.ID,
+		SubnetID:  &sn.ID,
+		ServerID:  &server.ID,
+	})
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 1, len(ni))
+	assert.Equal(s.T(), n.ID, ni[0].NetworkID)
+	assert.Equal(s.T(), sn.ID, ni[0].SubnetID)
+	assert.Equal(s.T(), server.ID, ni[0].ServerID)
+	sgID := ni[0].SecurityGroupID
 	rule, err := s.Prov.GetSecurityGroupManager().AddRule(&api.SecurityRuleOptions{
-		SecurityGroupID: server.SecurityGroups[0],
+		SecurityGroupID: sgID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
 		Protocol:        api.ProtocolTCP,
@@ -117,6 +125,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 		Description:     "grant ssh acces",
 	})
 	assert.NoError(s.T(), err)
+
 	v, err := s.Prov.GetVolumeManager().Create(&api.VolumeOptions{
 		Name:        "my volume",
 		Size:        5,
@@ -131,7 +140,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetVolumeManager().Delete(v.ID)
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetSecurityGroupManager().DeleteRule(server.SecurityGroups[0], rule.ID)
+	err = s.Prov.GetSecurityGroupManager().DeleteRule(sgID, rule.ID)
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetServerManager().Delete(server.ID)
 	assert.NoError(s.T(), err)

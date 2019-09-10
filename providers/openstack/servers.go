@@ -36,38 +36,26 @@ func (o createServerOpts) ToServerCreateMap() (map[string]interface{}, error) {
 
 }
 
-func (mgr *ServerManager) networks(subnets []string) ([]servers.Network, error) {
-	allSubnets, err := mgr.OpenStack.NetworkManager.listAllSubnets()
+func (mgr *ServerManager) networks(subnets []api.Subnet) []servers.Network {
 	var nets []servers.Network
-	if err != nil {
-		return nil, err
+	for _, asn := range subnets {
+		nets = append(nets, servers.Network{
+			UUID: asn.NetworkID,
+		})
 	}
-	for _, asn := range allSubnets {
-		for _, sn := range subnets {
-			if asn.ID == sn {
-				nets = append(nets, servers.Network{
-					UUID: asn.NetworkID,
-				})
-			}
-		}
-	}
-	return nets, nil
+	return nets
 }
 func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*api.Server, error) {
-	nets, err := mgr.networks(options.Subnets)
-	if err != nil {
-		return nil, err
-	}
 	opts := servers.CreateOpts{
 		FlavorRef:      options.TemplateID,
 		ImageRef:       options.ImageID,
 		Name:           options.Name,
-		SecurityGroups: options.SecurityGroups,
-		Networks:       nets,
+		SecurityGroups: []string{options.DefaultSecurityGroup},
+		Networks:       mgr.networks(options.Subnets),
 	}
-	keyId := uuid.New().String()
-	err = mgr.OpenStack.KeyPairManager.Import(keyId, options.KeyPair.PublicKey)
-	defer func() { _ = mgr.OpenStack.KeyPairManager.Delete(keyId) }()
+	keyID := uuid.New().String()
+	err := mgr.OpenStack.KeyPairManager.Import(keyID, options.KeyPair.PublicKey)
+	defer func() { _ = mgr.OpenStack.KeyPairManager.Delete(keyID) }()
 	if err != nil {
 		return nil, ProviderError(err)
 	}
@@ -96,23 +84,8 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
-	//if no public IP is requested the server is ready to be used
-	if !options.PublicIP {
-		return srv, nil
-	}
-	fip, err := floatingips.Create(mgr.OpenStack.Compute, &floatingips.CreateOpts{}).Extract()
-	if err != nil {
-		_ = mgr.Delete(srv.ID)
-		return nil, errors.Wrap(err, "Error creating server")
-	}
-	err = floatingips.AssociateInstance(mgr.OpenStack.Compute, srv.ID, &floatingips.AssociateOpts{
-		FloatingIP: fip.IP,
-	}).ExtractErr()
-	if err != nil {
-		return nil, errors.Wrap(err, "Error creating server")
-	}
-	return providers.WaitUntilServerReachStableState(mgr, srv.ID)
-
+	srv, err = providers.WaitUntilServerReachStableState(mgr, srv.ID)
+	return srv, errors.Wrapf(err, "error creating server %s", options.Name)
 }
 
 func (mgr *ServerManager) findIP(srvID string) *floatingips.FloatingIP {
@@ -171,49 +144,18 @@ func state(status string) api.ServerState {
 
 }
 
-// convertAddresses converts addresses returned by the OpenStack driver arrange them by version in a map
-func addresses(addresses map[string]interface{}) map[api.IPVersion][]string {
-	addrs := make(map[api.IPVersion][]string)
-	for _, obj := range addresses {
-		for _, networkAddresses := range obj.([]interface{}) {
-			address := networkAddresses.(map[string]interface{})
-			version := address["version"].(float64)
-			fixedIP := address["addr"].(string)
-			switch version {
-			case 4:
-				addrs[api.IPVersion4] = append(addrs[api.IPVersion4], fixedIP)
-			case 6:
-				addrs[api.IPVersion6] = append(addrs[api.IPVersion6], fixedIP)
-			}
-		}
-	}
-	return addrs
-}
-
-func ids(m []map[string]interface{}) []string {
-	kl := make([]string, len(m))
-	for i, m := range m {
-		kl[i] = m["id"].(string)
-	}
-	return kl
-}
-
 func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 	if srv == nil {
 		return nil
 	}
 	flavorID, _ := flavors.IDFromName(mgr.OpenStack.Compute, srv.Flavor["original_name"].(string))
 	return &api.Server{
-		ID:             srv.ID,
-		ImageID:        srv.Image["id"].(string),
-		TemplateID:     flavorID,
-		State:          state(srv.Status),
-		PublicIPv4:     srv.AccessIPv4,
-		AccessIPv6:     srv.AccessIPv6,
-		PrivateIPs:     addresses(srv.Addresses),
-		Name:           srv.Name,
-		CreatedAt:      srv.Created,
-		SecurityGroups: ids(srv.SecurityGroups),
+		ID:         srv.ID,
+		ImageID:    srv.Image["id"].(string),
+		TemplateID: flavorID,
+		State:      state(srv.Status),
+		Name:       srv.Name,
+		CreatedAt:  srv.Created,
 	}
 }
 

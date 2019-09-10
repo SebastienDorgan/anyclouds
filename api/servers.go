@@ -39,18 +39,14 @@ type ReservedServerOptions struct {
 
 //Server defines Server properties
 type Server struct {
-	ID             string
-	Name           string
-	TemplateID     string
-	ImageID        string
-	SecurityGroups []string
-	PrivateIPs     map[IPVersion][]string
-	PublicIPv4     string
-	AccessIPv6     string
-	State          ServerState
-	CreatedAt      time.Time
-	LeasingType    LeasingType
-	LeaseDuration  time.Duration
+	ID            string
+	Name          string
+	TemplateID    string
+	ImageID       string
+	State         ServerState
+	CreatedAt     time.Time
+	LeasingType   LeasingType
+	LeaseDuration time.Duration
 }
 
 //LeasingType type of leasing
@@ -70,9 +66,8 @@ type CreateServerOptions struct {
 	Name                  string
 	TemplateID            string
 	ImageID               string
-	SecurityGroups        []string
-	Subnets               []string
-	PublicIP              bool
+	DefaultSecurityGroup  string
+	Subnets               []Subnet
 	BootstrapScript       io.Reader
 	KeyPair               *sshutils.KeyPair
 	SpotServerOptions     *SpotServerOptions

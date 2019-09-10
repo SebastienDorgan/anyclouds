@@ -17,15 +17,15 @@ func createAWSTags(tags map[string]string) []*ec2.Tag {
 	return awsTags
 }
 
-func (p *Provider) AddTags(resourceId string, tags map[string]string) error {
-	_, err := p.EC2Client.CreateTags(&ec2.CreateTagsInput{
+func (p *Provider) AddTags(resourceID string, tags map[string]string) error {
+	_, err := p.AWSServices.EC2Client.CreateTags(&ec2.CreateTagsInput{
 		DryRun: aws.Bool(false),
 		Resources: []*string{
-			aws.String(resourceId),
+			aws.String(resourceID),
 		},
 		Tags: createAWSTags(tags),
 	})
 
-	return errors.Wrapf(err, "error adding tags to resource %s", resourceId)
+	return errors.Wrapf(err, "error adding tags to resource %s", resourceID)
 
 }

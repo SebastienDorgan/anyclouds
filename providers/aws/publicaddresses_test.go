@@ -14,7 +14,7 @@ import (
 
 func TestPublicAddresses(t *testing.T) {
 	prov := GetProvider()
-	mgr := aws.PublicIPAddressManager{AWS: prov}
+	mgr := aws.PublicIPAddressManager{Provider: prov}
 	pools, err := mgr.ListAvailablePools()
 	assert.NoError(t, err)
 	for _, pool := range pools {
@@ -27,7 +27,7 @@ func TestPublicAddresses(t *testing.T) {
 	assert.Equal(t, "test_ip", ip.Name)
 	assert.NotEmpty(t, ip.Address)
 	assert.NotEmpty(t, ip.ID)
-	ips, err := mgr.ListAllocated()
+	ips, err := mgr.List(&api.ListPublicIPAddressOptions{})
 	assert.NoError(t, err)
 	assert.True(t, len(ips) == 1)
 	assert.Equal(t, ip.ID, ips[0].ID)
@@ -90,27 +90,24 @@ func TestPublicAddresses(t *testing.T) {
 	assert.True(t, n < len(selection))
 
 	srv, err := prov.GetServerManager().Create(&api.CreateServerOptions{
-		Name:            "test_server",
-		TemplateID:      tpls[0].ID,
-		ImageID:         images[selection[n]].ID,
-		SecurityGroups:  []string{sg.ID},
-		Subnets:         []string{snet.ID},
-		PublicIP:        false,
-		BootstrapScript: nil,
-		KeyPair:         kp,
+		Name:                 "test_server",
+		TemplateID:           tpls[0].ID,
+		ImageID:              images[selection[n]].ID,
+		DefaultSecurityGroup: sg.ID,
+		Subnets:              []api.Subnet{*snet},
+		BootstrapScript:      nil,
+		KeyPair:              kp,
 	})
 	assert.NotNil(t, srv)
 	if srv != nil {
-		assert.Equal(t, "", srv.PublicIPv4)
-		assert.Equal(t, "", srv.AccessIPv6)
 		err = mgr.Associate(&api.PublicIPAssociationOptions{
 			PublicIPId: ip.ID,
 			ServerID:   srv.ID,
 		})
 		assert.NoError(t, err)
-		srv, err = prov.GetServerManager().Get(srv.ID)
+		nis, err := prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{ServerID: &srv.ID})
 		assert.NoError(t, err)
-		assert.Equal(t, ip.Address, srv.PublicIPv4)
+		assert.Equal(t, ip.Address, nis[0].PublicIPAddress)
 		err = mgr.Dissociate(ip.ID)
 		assert.NoError(t, err)
 		err = prov.GetServerManager().Delete(srv.ID)
