@@ -69,14 +69,14 @@ type CreateServerOptions struct {
 	DefaultSecurityGroup  string
 	Subnets               []Subnet
 	BootstrapScript       io.Reader
-	KeyPair               *sshutils.KeyPair
+	KeyPair               sshutils.KeyPair
 	SpotServerOptions     *SpotServerOptions
 	ReservedServerOptions *ReservedServerOptions
 }
 
 //ServerManager defines Server management functions an anyclouds provider must provide
 type ServerManager interface {
-	Create(options *CreateServerOptions) (*Server, error)
+	Create(options CreateServerOptions) (*Server, error)
 	Delete(id string) error
 	List() ([]Server, error)
 	Get(id string) (*Server, error)

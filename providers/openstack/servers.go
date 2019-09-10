@@ -79,8 +79,8 @@ func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*api.S
 }
 
 //Create creates an Server with options
-func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
-	srv, err := mgr.createServer(options)
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, error) {
+	srv, err := mgr.createServer(&options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}

@@ -42,9 +42,9 @@ type ListNetworkInterfacesOptions struct {
 
 //NetworkInterfaceManager an interface providing an abastraction to manipulate network interface cards
 type NetworkInterfaceManager interface {
-	Create(options *CreateNetworkInterfaceOptions) (*NetworkInterface, error)
+	Create(options CreateNetworkInterfaceOptions) (*NetworkInterface, error)
 	Delete(id string) error
 	Get(id string) (*NetworkInterface, error)
 	List(options *ListNetworkInterfacesOptions) ([]NetworkInterface, error)
-	Update(options *UpdateNetworkInterfacesOptions) (*NetworkInterface, error)
+	Update(options UpdateNetworkInterfacesOptions) (*NetworkInterface, error)
 }

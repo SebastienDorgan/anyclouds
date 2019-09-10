@@ -21,7 +21,7 @@ func (mgr *SecurityGroupManager) resourceGroup() string {
 	return mgr.Provider.Configuration.ResourceGroupName
 }
 
-func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, error) {
 	tags := make(map[string]*string, 1)
 	tags["networkID"] = &options.NetworkID
 	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.SecurityGroup{
@@ -172,7 +172,7 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 	}, nil
 }
 
-func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOptions) error {
+func (mgr *SecurityGroupManager) Attach(options api.SecurityGroupAttachmentOptions) error {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
@@ -287,7 +287,7 @@ func convertAzPortRange(portRange api.PortRange) *string {
 	return to.StringPtr(fmt.Sprintf("%d-%d", portRange.From, portRange.To))
 }
 
-func azSeurityRule(rule *api.SecurityRuleOptions) *network.SecurityRule {
+func azSecurityRule(rule *api.SecurityRuleOptions) *network.SecurityRule {
 	id := uuid.New()
 	format := network.SecurityRulePropertiesFormat{
 		Description:              &rule.Description,
@@ -302,7 +302,7 @@ func azSeurityRule(rule *api.SecurityRuleOptions) *network.SecurityRule {
 	}
 }
 
-func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
+func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.SecurityRule, error) {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
@@ -311,7 +311,7 @@ func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api
 	if sg.SecurityRules != nil {
 		rules = append(rules, *sg.SecurityRules...)
 	}
-	rule := azSeurityRule(options)
+	rule := azSecurityRule(&options)
 	rules = append(rules, *rule)
 	sg.SecurityRules = &rules
 	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, sg)

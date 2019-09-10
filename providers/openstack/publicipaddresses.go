@@ -41,10 +41,20 @@ func (mgr *PublicIPAddressManager) ListAvailablePools() ([]api.PublicIPPool, err
 	return pools, nil
 }
 
+func checkPublicIP(nis []api.NetworkInterface, fip *floatingips.FloatingIP) bool {
+	if nis == nil {
+		return true
+	}
+	for _, ni := range nis {
+		if ni.PublicIPAddress == fip.FloatingIP {
+			return true
+		}
+	}
+	return false
+}
+
 func (mgr *PublicIPAddressManager) List(options *api.ListPublicIPAddressOptions) ([]api.PublicIP, error) {
-	pages, err := floatingips.List(mgr.OpenStack.Network, floatingips.ListOpts{
-		Status: "ACTIVE",
-	}).AllPages()
+	pages, err := floatingips.List(mgr.OpenStack.Network, floatingips.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error listing available public ip address")
 	}
@@ -52,18 +62,24 @@ func (mgr *PublicIPAddressManager) List(options *api.ListPublicIPAddressOptions)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error listing available public ip address")
 	}
-
-	publicIPs := make([]api.PublicIP, len(fips))
-	for i, fip := range fips {
-		ip, err := toPublicIP(&fip)
+	var nis []api.NetworkInterface
+	if options != nil {
+		nis, err = mgr.OpenStack.NetworkInterfacesManager.List(&api.ListNetworkInterfacesOptions{
+			ServerID: options.ServerID,
+		})
 		if err != nil {
 			return nil, errors.Wrap(ProviderError(err), "error listing available public ip address")
 		}
-		publicIPs[i] = *ip
+	}
+	var publicIPs []api.PublicIP
+	for _, fip := range fips {
+		if checkPublicIP(nis, &fip) {
+			publicIPs = append(publicIPs, *toPublicIP(&fip))
+		}
 	}
 	return publicIPs, nil
 }
-func (mgr *PublicIPAddressManager) Allocate(options *api.PublicIPAllocationOptions) (*api.PublicIP, error) {
+func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOptions) (*api.PublicIP, error) {
 	fip, err := floatingips.Create(mgr.OpenStack.Network, &floatingips.CreateOpts{
 		Description:       options.Name,
 		FloatingNetworkID: mgr.OpenStack.ExternalNetworkID,
@@ -80,7 +96,7 @@ func (mgr *PublicIPAddressManager) Allocate(options *api.PublicIPAllocationOptio
 	}, nil
 }
 
-func (mgr *PublicIPAddressManager) Associate(options *api.PublicIPAssociationOptions) error {
+func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOptions) error {
 	fip, err := floatingips.Get(mgr.OpenStack.Network, options.PublicIPId).Extract()
 	if err != nil {
 		return errors.Wrapf(ProviderError(err), "error associating public ip address %s to server %s", options.PublicIPId, options.ServerID)
@@ -126,7 +142,6 @@ func (mgr *PublicIPAddressManager) Associate(options *api.PublicIPAssociationOpt
 func (mgr *PublicIPAddressManager) listPorts(serverID string) ([]ports.Port, error) {
 	up := true
 	pages, err := ports.List(mgr.OpenStack.Network, ports.ListOpts{
-		Status:       "ACTIVE",
 		AdminStateUp: &up,
 		DeviceID:     serverID,
 	}).AllPages()
@@ -160,15 +175,15 @@ func (mgr *PublicIPAddressManager) Get(publicIPID string) (*api.PublicIP, error)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dissociating public ip address %s", publicIPID)
 	}
-	return toPublicIP(fip)
+	return toPublicIP(fip), nil
 }
 
-func toPublicIP(fip *floatingips.FloatingIP) (*api.PublicIP, error) {
+func toPublicIP(fip *floatingips.FloatingIP) *api.PublicIP {
 	return &api.PublicIP{
 		ID:                 fip.ID,
 		Name:               fip.Description,
 		Address:            fip.FloatingIP,
 		NetworkInterfaceID: fip.PortID,
 		PrivateAddress:     fip.FixedIP,
-	}, nil
+	}
 }

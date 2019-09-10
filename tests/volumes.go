@@ -89,20 +89,20 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.NoError(s.T(), err)
 	n, err := s.getDefaultNetwork()
 	assert.NoError(s.T(), err)
-	sn, err := s.Prov.GetNetworkManager().CreateSubnet(&api.SubnetOptions{
+	sn, err := s.Prov.GetNetworkManager().CreateSubnet(api.SubnetOptions{
 		NetworkID: n.ID,
 		Name:      "subnet",
 		CIDR:      n.CIDR,
 		IPVersion: api.IPVersion4,
 	})
 	assert.NoError(s.T(), err)
-	server, err := s.Prov.GetServerManager().Create(&api.CreateServerOptions{
+	server, err := s.Prov.GetServerManager().Create(api.CreateServerOptions{
 		Name:            "instance_with_volume",
 		TemplateID:      tpl.ID,
 		ImageID:         img.ID,
 		Subnets:         []api.Subnet{*sn},
 		BootstrapScript: nil,
-		KeyPair:         kp,
+		KeyPair:         *kp,
 	})
 	assert.NoError(s.T(), err)
 	ni, err := s.Prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{
@@ -116,7 +116,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.Equal(s.T(), sn.ID, ni[0].SubnetID)
 	assert.Equal(s.T(), server.ID, ni[0].ServerID)
 	sgID := ni[0].SecurityGroupID
-	rule, err := s.Prov.GetSecurityGroupManager().AddRule(&api.SecurityRuleOptions{
+	rule, err := s.Prov.GetSecurityGroupManager().AddRule(api.SecurityRuleOptions{
 		SecurityGroupID: sgID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
@@ -126,7 +126,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	})
 	assert.NoError(s.T(), err)
 
-	v, err := s.Prov.GetVolumeManager().Create(&api.VolumeOptions{
+	v, err := s.Prov.GetVolumeManager().Create(api.VolumeOptions{
 		Name:        "my volume",
 		Size:        5,
 		MinIOPS:     250,

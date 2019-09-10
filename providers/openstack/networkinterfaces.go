@@ -30,7 +30,7 @@ func convert(port *ports.Port, publicIPs []api.PublicIP) *api.NetworkInterface {
 	}
 }
 
-func (mgr *NetworkInterfacesManager) Create(options *api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
 	up := true
 	ip := ports.IP{
 		IPAddress: "",
@@ -76,6 +76,9 @@ func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, erro
 	return convert(p, publicIPs), nil
 }
 func checkNI(ni *api.NetworkInterface, options *api.ListNetworkInterfacesOptions) bool {
+	if options == nil {
+		return true
+	}
 	if options.SubnetID != nil && *options.SubnetID != ni.SubnetID {
 		return false
 	}
@@ -90,11 +93,11 @@ func checkNI(ni *api.NetworkInterface, options *api.ListNetworkInterfacesOptions
 
 func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, error) {
 	var netID string
-	if options.NetworkID != nil {
+	if options != nil && options.NetworkID != nil {
 		netID = *options.NetworkID
 	}
 	var srvID string
-	if options.ServerID != nil {
+	if options != nil && options.ServerID != nil {
 		srvID = *options.ServerID
 	}
 	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPAddressOptions{})
@@ -121,7 +124,7 @@ func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOpti
 	return list, nil
 }
 
-func (mgr *NetworkInterfacesManager) Update(options *api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
 	opts := ports.UpdateOpts{
 		DeviceID: options.ServerID,
 	}

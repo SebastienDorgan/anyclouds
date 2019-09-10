@@ -23,7 +23,7 @@ func (s *SecurityGroupManagerTestSuite) deleteNetwork(id string) {
 //TestSecurityGroupManager Canonical test for SecurityGroupManager implementation
 func (s *SecurityGroupManagerTestSuite) TestSecurityGroupManager() {
 
-	n, err := s.Prov.GetNetworkManager().CreateNetwork(&api.NetworkOptions{
+	n, err := s.Prov.GetNetworkManager().CreateNetwork(api.NetworkOptions{
 		CIDR: "10.0.0.0/16",
 	})
 	assert.NoError(s.T(), err)
@@ -33,13 +33,13 @@ func (s *SecurityGroupManagerTestSuite) TestSecurityGroupManager() {
 	assert.NoError(s.T(), err)
 
 	l0 := len(sgl)
-	sg, err := Mgr.Create(&api.SecurityGroupOptions{
+	sg, err := Mgr.Create(api.SecurityGroupOptions{
 		Description: "test security group",
 		Name:        "test_sg",
 		NetworkID:   n.ID,
 	})
 	assert.NoError(s.T(), err)
-	_, err = Mgr.AddRule(&api.SecurityRuleOptions{
+	_, err = Mgr.AddRule(api.SecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Description:     "rule",
 		Direction:       api.RuleDirectionIngress,

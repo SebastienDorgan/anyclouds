@@ -30,7 +30,7 @@ func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
 }
 
 //Create creates a volume with options
-func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error) {
+func (mgr *VolumeManager) Create(options api.VolumeOptions) (*api.Volume, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		DryRun:           aws.Bool(false),
@@ -50,7 +50,7 @@ func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error
 				},
 			},
 		},
-		VolumeType: aws.String(mgr.selectVolumeType(options)),
+		VolumeType: aws.String(mgr.selectVolumeType(&options)),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating volume")

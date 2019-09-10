@@ -20,7 +20,7 @@ func TestPublicAddresses(t *testing.T) {
 	for _, pool := range pools {
 		fmt.Printf("%v", pool)
 	}
-	ip, err := mgr.Allocate(&api.PublicIPAllocationOptions{
+	ip, err := mgr.Allocate(api.PublicIPAllocationOptions{
 		Name: "test_ip",
 	})
 	assert.NoError(t, err)
@@ -37,18 +37,18 @@ func TestPublicAddresses(t *testing.T) {
 	assert.NoError(t, err)
 	kp, err = sshutils.CreateKeyPair(4096)
 	assert.NoError(t, err)
-	net, err := prov.GetNetworkManager().CreateNetwork(&api.NetworkOptions{
+	net, err := prov.GetNetworkManager().CreateNetwork(api.NetworkOptions{
 		CIDR: "10.0.0.0/16",
 		Name: "test_network",
 	})
 	assert.NoError(t, err)
-	sg, err := prov.GetSecurityGroupManager().Create(&api.SecurityGroupOptions{
+	sg, err := prov.GetSecurityGroupManager().Create(api.SecurityGroupOptions{
 		Name:        "sg",
 		Description: "security group",
 		NetworkID:   net.ID,
 	})
 	assert.NoError(t, err)
-	_, err = prov.GetSecurityGroupManager().AddRule(&api.SecurityRuleOptions{
+	_, err = prov.GetSecurityGroupManager().AddRule(api.SecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
@@ -56,14 +56,14 @@ func TestPublicAddresses(t *testing.T) {
 		Description:     "grant ssh access",
 	})
 	assert.NoError(t, err)
-	_, err = prov.GetSecurityGroupManager().AddRule(&api.SecurityRuleOptions{
+	_, err = prov.GetSecurityGroupManager().AddRule(api.SecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Direction:       api.RuleDirectionIngress,
 		Protocol:        api.ProtocolICMP,
 		Description:     "grant icmp access",
 	})
 	assert.NoError(t, err)
-	snet, err := prov.GetNetworkManager().CreateSubnet(&api.SubnetOptions{
+	snet, err := prov.GetNetworkManager().CreateSubnet(api.SubnetOptions{
 		NetworkID: net.ID,
 		Name:      "test_subnet",
 		CIDR:      "10.0.0.0/24",
@@ -89,18 +89,18 @@ func TestPublicAddresses(t *testing.T) {
 	})
 	assert.True(t, n < len(selection))
 
-	srv, err := prov.GetServerManager().Create(&api.CreateServerOptions{
+	srv, err := prov.GetServerManager().Create(api.CreateServerOptions{
 		Name:                 "test_server",
 		TemplateID:           tpls[0].ID,
 		ImageID:              images[selection[n]].ID,
 		DefaultSecurityGroup: sg.ID,
 		Subnets:              []api.Subnet{*snet},
 		BootstrapScript:      nil,
-		KeyPair:              kp,
+		KeyPair:              *kp,
 	})
 	assert.NotNil(t, srv)
 	if srv != nil {
-		err = mgr.Associate(&api.PublicIPAssociationOptions{
+		err = mgr.Associate(api.PublicIPAssociationOptions{
 			PublicIPId: ip.ID,
 			ServerID:   srv.ID,
 		})

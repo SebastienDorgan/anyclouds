@@ -58,12 +58,12 @@ type Subnet struct {
 
 //NetworkManager defines networking functions a anyclouds provider must provide
 type NetworkManager interface {
-	CreateNetwork(options *NetworkOptions) (*Network, error)
+	CreateNetwork(options NetworkOptions) (*Network, error)
 	DeleteNetwork(id string) error
 	ListNetworks() ([]Network, error)
 	GetNetwork(id string) (*Network, error)
 
-	CreateSubnet(options *SubnetOptions) (*Subnet, error)
+	CreateSubnet(options SubnetOptions) (*Subnet, error)
 	DeleteSubnet(networkID string, subnetID string) error
 	ListSubnets(networkID string) ([]Subnet, error)
 	GetSubnet(networkID, subnetID string) (*Subnet, error)

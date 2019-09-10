@@ -87,7 +87,7 @@ type SecurityGroupAttachmentOptions struct {
 //SecurityGroupManager defines security group management functions a anyclouds provider must provide
 type SecurityGroupManager interface {
 	//Create a security group
-	Create(options *SecurityGroupOptions) (*SecurityGroup, error)
+	Create(options SecurityGroupOptions) (*SecurityGroup, error)
 	//Delete a security group
 	Delete(id string) error
 	//List security groups
@@ -95,9 +95,9 @@ type SecurityGroupManager interface {
 	//Get security group
 	Get(id string) (*SecurityGroup, error)
 	//Attach a security group to a server
-	Attach(options *SecurityGroupAttachmentOptions) error
+	Attach(options SecurityGroupAttachmentOptions) error
 	//Add a rule to a security group
-	AddRule(options *SecurityRuleOptions) (*SecurityRule, error)
+	AddRule(options SecurityRuleOptions) (*SecurityRule, error)
 	//Delete a rule
 	DeleteRule(groupID, ruleID string) error
 }

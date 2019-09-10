@@ -14,7 +14,7 @@ type VolumeManager struct {
 }
 
 //Create creates a volume with options
-func (mgr *VolumeManager) Create(options *api.VolumeOptions) (*api.Volume, error) {
+func (mgr *VolumeManager) Create(options api.VolumeOptions) (*api.Volume, error) {
 	v, err := volumes.Create(mgr.OpenStack.Volume, volumes.CreateOpts{
 		Size:               int(options.Size),
 		AvailabilityZone:   "",

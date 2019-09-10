@@ -37,7 +37,7 @@ func checkGroupName(name string) error {
 }
 
 //Create creates an openstack security group
-func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, error) {
 	err := checkGroupName(options.Name)
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "error creating security group")
@@ -150,7 +150,7 @@ func checkIPs(subnetID string, ip string, ips []ports.IP) bool {
 }
 
 //Attach a server to a security group
-func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOptions) error {
+func (mgr *SecurityGroupManager) Attach(options api.SecurityGroupAttachmentOptions) error {
 	//srv, err := servers.Get(mgr.OpenStack.Compute, id).Extract()
 	sn, err := mgr.OpenStack.NetworkManager.GetSubnet(options.NetworkID, options.SubnetID)
 	if err != nil {
@@ -185,8 +185,8 @@ func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOpti
 }
 
 //AddRule adds a security rule to an OpenStack security group
-func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
-	opts := ruleOptions(options)
+func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.SecurityRule, error) {
+	opts := ruleOptions(&options)
 	opts.SecGroupID = options.SecurityGroupID
 	r, err := rules.Create(mgr.OpenStack.Network, opts).Extract()
 	if err != nil {

@@ -48,8 +48,8 @@ type ListPublicIPAddressOptions struct {
 type PublicIPAddressManager interface {
 	ListAvailablePools() ([]PublicIPPool, error)
 	List(options *ListPublicIPAddressOptions) ([]PublicIP, error)
-	Allocate(options *PublicIPAllocationOptions) (*PublicIP, error)
-	Associate(options *PublicIPAssociationOptions) error
+	Allocate(options PublicIPAllocationOptions) (*PublicIP, error)
+	Associate(options PublicIPAssociationOptions) error
 	Dissociate(publicIPId string) error
 	Release(publicIPId string) error
 	Get(publicIPId string) (*PublicIP, error)

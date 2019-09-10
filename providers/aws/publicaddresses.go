@@ -51,6 +51,9 @@ func (mgr *PublicIPAddressManager) ListAvailablePools() ([]api.PublicIPPool, err
 	return pools, nil
 }
 func createListPublicIPAddressFilters(options *api.ListPublicIPAddressOptions) []*ec2.Filter {
+	if options == nil {
+		return nil
+	}
 	if options.ServerID == nil {
 		return nil
 	}
@@ -96,8 +99,8 @@ func toAllocateAddressInput(options *api.PublicIPAllocationOptions) *ec2.Allocat
 	}
 
 }
-func (mgr *PublicIPAddressManager) Allocate(options *api.PublicIPAllocationOptions) (*api.PublicIP, error) {
-	out, err := mgr.Provider.AWSServices.EC2Client.AllocateAddress(toAllocateAddressInput(options))
+func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOptions) (*api.PublicIP, error) {
+	out, err := mgr.Provider.AWSServices.EC2Client.AllocateAddress(toAllocateAddressInput(&options))
 	if err != nil {
 		return nil, errors.Wrapf(err, "error allocating public ip %s", options.Name)
 	}
@@ -112,8 +115,8 @@ func (mgr *PublicIPAddressManager) Allocate(options *api.PublicIPAllocationOptio
 		Address: *out.PublicIp,
 	}, nil
 }
-func (mgr *PublicIPAddressManager) Associate(options *api.PublicIPAssociationOptions) error {
-	input, err := mgr.toAssociatedAddressInput(options)
+func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOptions) error {
+	input, err := mgr.toAssociatedAddressInput(&options)
 	if err != nil {
 		return errors.Wrapf(err, "error associating public ip %s with server %s", options.PublicIPId, options.ServerID)
 	}

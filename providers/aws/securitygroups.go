@@ -84,7 +84,7 @@ func noError() retry.Condition {
 }
 
 //Create creates an security group
-func (mgr *SecurityGroupManager) Create(options *api.SecurityGroupOptions) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
 		Description: aws.String(options.Description),
 		GroupName:   aws.String(options.Name),
@@ -145,7 +145,7 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 }
 
 //Attach a server to a security group
-func (mgr *SecurityGroupManager) Attach(options *api.SecurityGroupAttachmentOptions) error {
+func (mgr *SecurityGroupManager) Attach(options api.SecurityGroupAttachmentOptions) error {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
 			{
@@ -299,8 +299,8 @@ func ipPermissionFromRule(r *api.SecurityRule) (*ec2.IpPermission, error) {
 }
 
 //AddRule adds a security rule to an security group
-func (mgr *SecurityGroupManager) AddRule(options *api.SecurityRuleOptions) (*api.SecurityRule, error) {
-	p, err := ipPermission(options)
+func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.SecurityRule, error) {
+	p, err := ipPermission(&options)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding rule to security groups")
 	}

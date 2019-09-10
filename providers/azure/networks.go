@@ -11,7 +11,7 @@ type NetworkManager struct {
 	Provider *Provider
 }
 
-func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
+func (mgr *NetworkManager) CreateNetwork(options api.NetworkOptions) (*api.Network, error) {
 	future, err := mgr.Provider.VirtualNetworksClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.VirtualNetwork{
 		Location: &mgr.Provider.Configuration.Location,
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
@@ -80,7 +80,7 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, error) {
 	}, nil
 }
 
-func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet, error) {
+func (mgr *NetworkManager) CreateSubnet(options api.SubnetOptions) (*api.Subnet, error) {
 	future, err := mgr.Provider.SubnetsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.NetworkID, options.Name, network.Subnet{
 		SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
 			AddressPrefix: &options.CIDR,

@@ -195,7 +195,7 @@ func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOption
 }
 
 //Create creates an Server with options
-func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, error) {
 	var id *string
 	var err error
 	if options.SpotServerOptions != nil && options.ReservedServerOptions != nil {
@@ -208,11 +208,11 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
 	if options.SpotServerOptions != nil {
-		id, err = mgr.createSpotInstance(options, keyName)
+		id, err = mgr.createSpotInstance(&options, keyName)
 	} else if options.ReservedServerOptions != nil {
-		id, err = mgr.createReservedInstance(options)
+		id, err = mgr.createReservedInstance(&options)
 	} else {
-		id, err = mgr.createOnDemandInstance(options, keyName)
+		id, err = mgr.createOnDemandInstance(&options, keyName)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
@@ -230,7 +230,7 @@ func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server,
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}
-	err = mgr.addSecurityGroups(options, *id)
+	err = mgr.addSecurityGroups(&options, *id)
 	if err != nil {
 		_ = mgr.Delete(*id)
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)

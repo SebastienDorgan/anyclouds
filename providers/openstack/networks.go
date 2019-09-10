@@ -16,7 +16,7 @@ type NetworkManager struct {
 }
 
 //CreateNetwork creates a network
-func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
+func (mgr *NetworkManager) CreateNetwork(options api.NetworkOptions) (*api.Network, error) {
 	up := true
 	opts := networks.CreateOpts{
 		AdminStateUp: &up,
@@ -148,7 +148,7 @@ func (mgr *NetworkManager) findRouter(name string) (*routers.Router, error) {
 }
 
 //CreateSubnet creates a subnet
-func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet, error) {
+func (mgr *NetworkManager) CreateSubnet(options api.SubnetOptions) (*api.Subnet, error) {
 	dhcp := true
 	opts := subnets.CreateOpts{
 		NetworkID:  options.NetworkID,

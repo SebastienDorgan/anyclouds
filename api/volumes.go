@@ -35,7 +35,7 @@ type VolumeAttachment struct {
 
 //VolumeManager defines volume management functions an anyclouds provider must provide
 type VolumeManager interface {
-	Create(options *VolumeOptions) (*Volume, error)
+	Create(options VolumeOptions) (*Volume, error)
 	Delete(id string) error
 	List() ([]Volume, error)
 	Get(id string) (*Volume, error)

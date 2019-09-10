@@ -16,7 +16,7 @@ type NetworkManager struct {
 }
 
 //CreateNetwork creates a network
-func (mgr *NetworkManager) CreateNetwork(options *api.NetworkOptions) (*api.Network, error) {
+func (mgr *NetworkManager) CreateNetwork(options api.NetworkOptions) (*api.Network, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateVpc(&ec2.CreateVpcInput{
 		AmazonProvidedIpv6CidrBlock: aws.Bool(true),
 		CidrBlock:                   &options.CIDR,
@@ -190,7 +190,7 @@ func subnet(s *ec2.Subnet) *api.Subnet {
 }
 
 //CreateSubnet creates a subnet
-func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet, error) {
+func (mgr *NetworkManager) CreateSubnet(options api.SubnetOptions) (*api.Subnet, error) {
 	input := ec2.CreateSubnetInput{
 		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		VpcId:            &options.NetworkID,
@@ -210,7 +210,7 @@ func (mgr *NetworkManager) CreateSubnet(options *api.SubnetOptions) (*api.Subnet
 		_ = mgr.DeleteSubnet(options.NetworkID, *out.Subnet.SubnetId)
 		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)
 	}
-	err = mgr.associateRouteTable(options, out)
+	err = mgr.associateRouteTable(&options, out)
 	if err != nil {
 		_ = mgr.DeleteSubnet(options.NetworkID, *out.Subnet.SubnetId)
 		return nil, errors.Wrapf(err, "error creating subnet %s", options.Name)

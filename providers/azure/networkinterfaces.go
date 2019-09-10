@@ -85,8 +85,8 @@ func (mgr *NetworkInterfacesManager) create(options *api.CreateNetworkInterfaceO
 	}
 	return &ni, nil
 }
-func (mgr *NetworkInterfacesManager) Create(options *api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
-	ni, err := mgr.create(options)
+func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
+	ni, err := mgr.create(&options)
 	return convertNetworkInterface(ni), err
 }
 
@@ -142,6 +142,9 @@ func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, erro
 }
 
 func checkNI(ni *api.NetworkInterface, options *api.ListNetworkInterfacesOptions) bool {
+	if options == nil {
+		return true
+	}
 	if options.ServerID != nil && *options.ServerID != ni.ServerID {
 		return false
 	}
@@ -193,7 +196,7 @@ func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOpti
 	return list, nil
 }
 
-func (mgr *NetworkInterfacesManager) Update(options *api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
 	res, err := mgr.Provider.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), options.ID, "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)

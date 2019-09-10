@@ -34,7 +34,7 @@ func checkAddress(addresses []string, address *string) bool {
 
 func (mgr *PublicIPAddressManager) List(options *api.ListPublicIPAddressOptions) ([]api.PublicIP, error) {
 	var addresses []string
-	if options.ServerID != nil {
+	if options != nil && options.ServerID != nil {
 		nis, err := mgr.Provider.NetworkInterfacesManager.List(&api.ListNetworkInterfacesOptions{
 			ServerID: options.ServerID,
 		})
@@ -76,7 +76,7 @@ func convertAddress(address *network.PublicIPAddress) *api.PublicIP {
 	}
 }
 
-func (mgr *PublicIPAddressManager) Allocate(options *api.PublicIPAllocationOptions) (*api.PublicIP, error) {
+func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOptions) (*api.PublicIP, error) {
 	future, err := mgr.Provider.PublicIPAddressesClient.CreateOrUpdate(
 		context.Background(),
 		mgr.Provider.Configuration.ResourceGroupName,
@@ -109,7 +109,7 @@ func (mgr *PublicIPAddressManager) Allocate(options *api.PublicIPAllocationOptio
 	return convertAddress(&ip), nil
 }
 
-func (mgr *PublicIPAddressManager) Associate(options *api.PublicIPAssociationOptions) error {
+func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOptions) error {
 	nis, err := mgr.Provider.NetworkInterfacesManager.list(&api.ListNetworkInterfacesOptions{
 		SubnetID: &options.SubnetID,
 		ServerID: &options.ServerID,

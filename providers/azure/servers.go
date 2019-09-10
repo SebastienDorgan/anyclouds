@@ -22,7 +22,7 @@ func (mgr *ServerManager) resourceGroup() string {
 func (mgr *ServerManager) createNetworkInterfaces(options *api.CreateServerOptions) ([]compute.NetworkInterfaceReference, error) {
 	var nis []compute.NetworkInterfaceReference
 	for _, sn := range options.Subnets {
-		ni, err := mgr.Provider.NetworkInterfacesManager.Create(&api.CreateNetworkInterfaceOptions{
+		ni, err := mgr.Provider.NetworkInterfacesManager.Create(api.CreateNetworkInterfaceOptions{
 			Name:             fmt.Sprintf("NI-%s", sn.Name),
 			NetworkID:        sn.NetworkID,
 			SubnetID:         sn.ID,
@@ -44,9 +44,9 @@ func (mgr *ServerManager) createNetworkInterfaces(options *api.CreateServerOptio
 	}
 	return nis, nil
 }
-func (mgr *ServerManager) Create(options *api.CreateServerOptions) (*api.Server, error) {
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, error) {
 	publisher, offer, sku, version := parseImageID(options.ImageID)
-	nis, err := mgr.createNetworkInterfaces(options)
+	nis, err := mgr.createNetworkInterfaces(&options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
 	}

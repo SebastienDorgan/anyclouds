@@ -37,7 +37,7 @@ func (mgr *NetworkInterfaceManager) convert(ni *ec2.NetworkInterface) *api.Netwo
 	}
 }
 
-func (mgr *NetworkInterfaceManager) Create(options *api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfaceManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateNetworkInterface(&ec2.CreateNetworkInterfaceInput{
 		Description:      &options.Name,
 		Groups:           []*string{&options.SecurityGroupID},
@@ -135,6 +135,9 @@ func (mgr *NetworkInterfaceManager) Get(id string) (*api.NetworkInterface, error
 }
 
 func createFilters(options *api.ListNetworkInterfacesOptions) []*ec2.Filter {
+	if options == nil {
+		return nil
+	}
 	var filters []*ec2.Filter
 	if options.NetworkID != nil {
 		filters = append(filters, &ec2.Filter{
@@ -184,7 +187,7 @@ func (mgr *NetworkInterfaceManager) List(options *api.ListNetworkInterfacesOptio
 	return list, nil
 }
 
-func (mgr *NetworkInterfaceManager) Update(options *api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfaceManager) Update(options api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
 	if options.ServerID != nil {
 		out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{&options.ID},
