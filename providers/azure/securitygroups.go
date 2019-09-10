@@ -287,7 +287,7 @@ func convertAzPortRange(portRange api.PortRange) *string {
 	return to.StringPtr(fmt.Sprintf("%d-%d", portRange.From, portRange.To))
 }
 
-func azSecurityRule(rule *api.SecurityRuleOptions) *network.SecurityRule {
+func azSecurityRule(rule *api.AddSecurityRuleOptions) *network.SecurityRule {
 	id := uuid.New()
 	format := network.SecurityRulePropertiesFormat{
 		Description:              &rule.Description,
@@ -302,7 +302,7 @@ func azSecurityRule(rule *api.SecurityRuleOptions) *network.SecurityRule {
 	}
 }
 
-func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.SecurityRule, error) {
+func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, error) {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
@@ -334,7 +334,7 @@ func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.
 	return nil, errors.Errorf("error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
 }
 
-func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
+func (mgr *SecurityGroupManager) DeleteSecurityRule(groupID, ruleID string) error {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), groupID, "")
 	if err != nil {
 		return errors.Wrapf(err, "error deleting security rule -%s- to security group %s ", ruleID, groupID)

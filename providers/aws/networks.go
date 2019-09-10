@@ -16,7 +16,7 @@ type NetworkManager struct {
 }
 
 //CreateNetwork creates a network
-func (mgr *NetworkManager) CreateNetwork(options api.NetworkOptions) (*api.Network, error) {
+func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api.Network, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateVpc(&ec2.CreateVpcInput{
 		AmazonProvidedIpv6CidrBlock: aws.Bool(true),
 		CidrBlock:                   &options.CIDR,

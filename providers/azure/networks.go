@@ -11,7 +11,7 @@ type NetworkManager struct {
 	Provider *Provider
 }
 
-func (mgr *NetworkManager) CreateNetwork(options api.NetworkOptions) (*api.Network, error) {
+func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api.Network, error) {
 	future, err := mgr.Provider.VirtualNetworksClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.VirtualNetwork{
 		Location: &mgr.Provider.Configuration.Location,
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{

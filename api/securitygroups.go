@@ -50,8 +50,8 @@ type SecurityRule struct {
 	Description     string
 }
 
-//SecurityRuleOptions define security rule options when adding rule to a security group
-type SecurityRuleOptions struct {
+//AddSecurityRuleOptions define security rule options when adding rule to a security group
+type AddSecurityRuleOptions struct {
 	SecurityGroupID string
 	Direction       RuleDirection
 	PortRange       PortRange
@@ -97,7 +97,7 @@ type SecurityGroupManager interface {
 	//Attach a security group to a server
 	Attach(options SecurityGroupAttachmentOptions) error
 	//Add a rule to a security group
-	AddRule(options SecurityRuleOptions) (*SecurityRule, error)
+	AddSecurityRule(options AddSecurityRuleOptions) (*SecurityRule, error)
 	//Delete a rule
-	DeleteRule(groupID, ruleID string) error
+	DeleteSecurityRule(groupID, ruleID string) error
 }

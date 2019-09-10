@@ -42,7 +42,7 @@ func WilfulDelete(f func(v string) error, id string) error {
 }
 
 func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network *api.Network, subnet *api.Subnet, err error) {
-	network, err = netm.CreateNetwork(api.NetworkOptions{
+	network, err = netm.CreateNetwork(api.CreateNetworkOptions{
 		CIDR: "10.0.0.0/16",
 		Name: "Test Network",
 	})
@@ -71,7 +71,7 @@ func (s *ServerManagerTestSuite) CreateSecurityGroup(sgm api.SecurityGroupManage
 	if err != nil {
 		return nil, err
 	}
-	_, _ = sgm.AddRule(api.SecurityRuleOptions{
+	_, _ = sgm.AddSecurityRule(api.AddSecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
@@ -79,7 +79,7 @@ func (s *ServerManagerTestSuite) CreateSecurityGroup(sgm api.SecurityGroupManage
 		CIDR:            "0.0.0.0/0",
 		Description:     "Grant ingress ssh trafic",
 	})
-	_, _ = sgm.AddRule(api.SecurityRuleOptions{
+	_, _ = sgm.AddSecurityRule(api.AddSecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 1, To: 65535},
@@ -172,11 +172,11 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 		KeyPair:         *kp,
 	})
 	assert.NoError(s.T(), err)
-	publicIP, err := s.Prov.GetPublicIPAddressManager().Allocate(api.PublicIPAllocationOptions{
+	publicIP, err := s.Prov.GetPublicIPAddressManager().Create(api.AllocatePublicIPAddressOptions{
 		Name: "ip",
 	})
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetPublicIPAddressManager().Associate(api.PublicIPAssociationOptions{
+	err = s.Prov.GetPublicIPAddressManager().Associate(api.AssociatePublicIPOptions{
 		PublicIPId: publicIP.ID,
 		ServerID:   server.ID,
 		SubnetID:   subnet.ID,
@@ -194,7 +194,7 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	assert.Equal(s.T(), server.TemplateID, tpl.ID)
 	err = srvMgr.Delete(server.ID)
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetPublicIPAddressManager().Release(publicIP.ID)
+	err = s.Prov.GetPublicIPAddressManager().Delete(publicIP.ID)
 	assert.NoError(s.T(), err)
 	err = sgm.Delete(sg.ID)
 	assert.NoError(s.T(), err)
@@ -242,11 +242,11 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		},
 	})
 	assert.NoError(s.T(), err)
-	publicIP, err := s.Prov.GetPublicIPAddressManager().Allocate(api.PublicIPAllocationOptions{
+	publicIP, err := s.Prov.GetPublicIPAddressManager().Create(api.AllocatePublicIPAddressOptions{
 		Name: "ip",
 	})
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetPublicIPAddressManager().Associate(api.PublicIPAssociationOptions{
+	err = s.Prov.GetPublicIPAddressManager().Associate(api.AssociatePublicIPOptions{
 		PublicIPId: publicIP.ID,
 		ServerID:   server.ID,
 		SubnetID:   subnet.ID,
@@ -286,7 +286,7 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	assert.NoError(s.T(), err)
 	err = WilfulDelete(sgm.Delete, sg.ID)
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetPublicIPAddressManager().Release(publicIP.ID)
+	err = s.Prov.GetPublicIPAddressManager().Delete(publicIP.ID)
 	assert.NoError(s.T(), err)
 	err = netm.DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(s.T(), err)

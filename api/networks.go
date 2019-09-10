@@ -10,8 +10,8 @@ type Network struct {
 	CIDR string
 }
 
-//NetworkOptions defines options to use when creating a network
-type NetworkOptions struct {
+//CreateNetworkOptions defines options to use when creating a network
+type CreateNetworkOptions struct {
 	//name of the network
 	CIDR string
 	//DeviceName of the network
@@ -58,7 +58,7 @@ type Subnet struct {
 
 //NetworkManager defines networking functions a anyclouds provider must provide
 type NetworkManager interface {
-	CreateNetwork(options NetworkOptions) (*Network, error)
+	CreateNetwork(options CreateNetworkOptions) (*Network, error)
 	DeleteNetwork(id string) error
 	ListNetworks() ([]Network, error)
 	GetNetwork(id string) (*Network, error)

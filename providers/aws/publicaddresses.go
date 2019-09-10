@@ -83,7 +83,7 @@ func (mgr *PublicIPAddressManager) List(options *api.ListPublicIPAddressOptions)
 	return addresses, nil
 }
 
-func toAllocateAddressInput(options *api.PublicIPAllocationOptions) *ec2.AllocateAddressInput {
+func toAllocateAddressInput(options *api.AllocatePublicIPAddressOptions) *ec2.AllocateAddressInput {
 	var address *string
 	if len(options.Address) > 0 {
 		address = aws.String(options.Address)
@@ -99,14 +99,14 @@ func toAllocateAddressInput(options *api.PublicIPAllocationOptions) *ec2.Allocat
 	}
 
 }
-func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOptions) (*api.PublicIP, error) {
+func (mgr *PublicIPAddressManager) Create(options api.AllocatePublicIPAddressOptions) (*api.PublicIP, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.AllocateAddress(toAllocateAddressInput(&options))
 	if err != nil {
 		return nil, errors.Wrapf(err, "error allocating public ip %s", options.Name)
 	}
 	err = mgr.Provider.AddTags(*out.AllocationId, map[string]string{"name": options.Name})
 	if err != nil {
-		_ = mgr.Release(*out.AllocationId)
+		_ = mgr.Delete(*out.AllocationId)
 		return nil, errors.Wrapf(err, "error allocating public ip %s", options.Name)
 	}
 	return &api.PublicIP{
@@ -115,7 +115,7 @@ func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOption
 		Address: *out.PublicIp,
 	}, nil
 }
-func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOptions) error {
+func (mgr *PublicIPAddressManager) Associate(options api.AssociatePublicIPOptions) error {
 	input, err := mgr.toAssociatedAddressInput(&options)
 	if err != nil {
 		return errors.Wrapf(err, "error associating public ip %s with server %s", options.PublicIPId, options.ServerID)
@@ -124,7 +124,7 @@ func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOpti
 	return errors.Wrapf(err, "error associating public ip %s with server %s", options.PublicIPId, options.ServerID)
 }
 
-func (mgr *PublicIPAddressManager) toAssociatedAddressInput(options *api.PublicIPAssociationOptions) (*ec2.AssociateAddressInput, error) {
+func (mgr *PublicIPAddressManager) toAssociatedAddressInput(options *api.AssociatePublicIPOptions) (*ec2.AssociateAddressInput, error) {
 	var privateIP *string
 	if len(options.PrivateIP) > 0 {
 		privateIP = aws.String(options.PrivateIP)
@@ -145,7 +145,7 @@ func (mgr *PublicIPAddressManager) toAssociatedAddressInput(options *api.PublicI
 	}, nil
 }
 
-func (mgr *PublicIPAddressManager) getNetworkInterface(options *api.PublicIPAssociationOptions, privateIP *string) (*ec2.NetworkInterface, error) {
+func (mgr *PublicIPAddressManager) getNetworkInterface(options *api.AssociatePublicIPOptions, privateIP *string) (*ec2.NetworkInterface, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		DryRun: nil,
 		Filters: []*ec2.Filter{
@@ -183,7 +183,7 @@ func (mgr *PublicIPAddressManager) Dissociate(publicIPID string) error {
 	})
 	return errors.Wrapf(err, "error disassociating public ip %s", publicIPID)
 }
-func (mgr *PublicIPAddressManager) Release(publicIPId string) error {
+func (mgr *PublicIPAddressManager) Delete(publicIPId string) error {
 	_, err := mgr.Provider.AWSServices.EC2Client.ReleaseAddress(&ec2.ReleaseAddressInput{
 		AllocationId: aws.String(publicIPId),
 	})

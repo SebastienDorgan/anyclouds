@@ -76,7 +76,7 @@ func convertAddress(address *network.PublicIPAddress) *api.PublicIP {
 	}
 }
 
-func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOptions) (*api.PublicIP, error) {
+func (mgr *PublicIPAddressManager) Create(options api.AllocatePublicIPAddressOptions) (*api.PublicIP, error) {
 	future, err := mgr.Provider.PublicIPAddressesClient.CreateOrUpdate(
 		context.Background(),
 		mgr.Provider.Configuration.ResourceGroupName,
@@ -109,7 +109,7 @@ func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOption
 	return convertAddress(&ip), nil
 }
 
-func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOptions) error {
+func (mgr *PublicIPAddressManager) Associate(options api.AssociatePublicIPOptions) error {
 	nis, err := mgr.Provider.NetworkInterfacesManager.list(&api.ListNetworkInterfacesOptions{
 		SubnetID: &options.SubnetID,
 		ServerID: &options.ServerID,
@@ -150,7 +150,7 @@ func (mgr *PublicIPAddressManager) Dissociate(publicIPId string) error {
 	panic("implement me")
 }
 
-func (mgr *PublicIPAddressManager) Release(publicIPId string) error {
+func (mgr *PublicIPAddressManager) Delete(publicIPId string) error {
 	panic("implement me")
 }
 

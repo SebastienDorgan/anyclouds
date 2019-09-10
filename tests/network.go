@@ -17,7 +17,7 @@ type NetworkManagerTestSuite struct {
 //	Mgr := s.Mgr
 //	nets, err := Mgr.ListNetworks()
 //	l0 := len(nets)
-//	n, err := Mgr.CreateNetwork(&api.NetworkOptions{
+//	n, err := Mgr.CreateNetwork(&api.CreateNetworkOptions{
 //		CIDR: "10.0.0.0/16",
 //		DeviceName: "test_net",
 //	})
@@ -56,7 +56,7 @@ type NetworkManagerTestSuite struct {
 
 //TestSubnets canonical tests for subnets
 func (s *NetworkManagerTestSuite) TestSubnets() {
-	n, err := s.Mgr.CreateNetwork(api.NetworkOptions{
+	n, err := s.Mgr.CreateNetwork(api.CreateNetworkOptions{
 		Name: "test_network",
 		CIDR: "10.0.0.0/16",
 	})

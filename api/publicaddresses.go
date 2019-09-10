@@ -9,15 +9,15 @@ type PublicIP struct {
 	PrivateAddress     string
 }
 
-//PublicIPAllocationOptions options that can be used to allocate a public ip address
-type PublicIPAllocationOptions struct {
+//AllocatePublicIPAddressOptions options that can be used to allocate a public ip address
+type AllocatePublicIPAddressOptions struct {
 	Name        string
 	Address     string
 	AddressPool string
 }
 
-//PublicIPAssociationOptions options that can be used to associate a public ip adress to a server
-type PublicIPAssociationOptions struct {
+//AssociatePublicIPOptions options that can be used to associate a public ip adress to a server
+type AssociatePublicIPOptions struct {
 	PublicIPId string
 	ServerID   string
 	//If the server is attached to more than one network this field must be provided
@@ -48,9 +48,9 @@ type ListPublicIPAddressOptions struct {
 type PublicIPAddressManager interface {
 	ListAvailablePools() ([]PublicIPPool, error)
 	List(options *ListPublicIPAddressOptions) ([]PublicIP, error)
-	Allocate(options PublicIPAllocationOptions) (*PublicIP, error)
-	Associate(options PublicIPAssociationOptions) error
+	Create(options AllocatePublicIPAddressOptions) (*PublicIP, error)
+	Associate(options AssociatePublicIPOptions) error
 	Dissociate(publicIPId string) error
-	Release(publicIPId string) error
+	Delete(publicIPId string) error
 	Get(publicIPId string) (*PublicIP, error)
 }

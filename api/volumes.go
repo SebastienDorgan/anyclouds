@@ -9,8 +9,8 @@ type Volume struct {
 	DataRate int64
 }
 
-//VolumeOptions defines options to use when creating a volume
-type VolumeOptions struct {
+//CreateVolumeOptions defines options to use when creating a volume
+type CreateVolumeOptions struct {
 	Name        string
 	Size        int64
 	MinIOPS     int64
@@ -33,14 +33,28 @@ type VolumeAttachment struct {
 	Device   string
 }
 
+//AttachVolumeOptions options used to attach a volume
+type AttachVolumeOptions struct {
+	VolumeID   string
+	ServerID   string
+	DevicePath string
+}
+
+//DetachVolumeOptions options used to detach a volume
+type DetachVolumeOptions struct {
+	VolumeID string
+	ServerID string
+	Force    bool
+}
+
 //VolumeManager defines volume management functions an anyclouds provider must provide
 type VolumeManager interface {
-	Create(options VolumeOptions) (*Volume, error)
+	Create(options CreateVolumeOptions) (*Volume, error)
 	Delete(id string) error
 	List() ([]Volume, error)
 	Get(id string) (*Volume, error)
 	Modify(options *ModifyVolumeOptions) (*Volume, error)
-	Attach(volumeID string, serverID string, device string) (*VolumeAttachment, error)
-	Detach(volumeID string, serverID string, force bool) error
+	Attach(options AttachVolumeOptions) (*VolumeAttachment, error)
+	Detach(options DetachVolumeOptions) error
 	Attachments(serverID string) ([]VolumeAttachment, error)
 }

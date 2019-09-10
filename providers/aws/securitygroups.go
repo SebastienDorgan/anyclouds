@@ -214,7 +214,7 @@ func isV6(CIDR string) (bool, error) {
 
 }
 
-func ipRange(o *api.SecurityRuleOptions) *ec2.IpRange {
+func ipRange(o *api.AddSecurityRuleOptions) *ec2.IpRange {
 	cidr := o.CIDR
 	if len(cidr) == 0 {
 		cidr = "0.0.0.0/0"
@@ -236,7 +236,7 @@ func ipRangeFromRule(o *api.SecurityRule) *ec2.IpRange {
 	}
 }
 
-func ipv6Range(o *api.SecurityRuleOptions) *ec2.Ipv6Range {
+func ipv6Range(o *api.AddSecurityRuleOptions) *ec2.Ipv6Range {
 	return &ec2.Ipv6Range{
 		CidrIpv6:    &o.CIDR,
 		Description: &o.Description,
@@ -250,7 +250,7 @@ func ipv6RangeFromRule(o *api.SecurityRule) *ec2.Ipv6Range {
 	}
 }
 
-func ipPermission(options *api.SecurityRuleOptions) (*ec2.IpPermission, error) {
+func ipPermission(options *api.AddSecurityRuleOptions) (*ec2.IpPermission, error) {
 	p := &ec2.IpPermission{
 		IpProtocol: aws.String(string(options.Protocol)),
 		FromPort:   aws.Int64(int64(options.PortRange.From)),
@@ -298,8 +298,8 @@ func ipPermissionFromRule(r *api.SecurityRule) (*ec2.IpPermission, error) {
 	return p, nil
 }
 
-//AddRule adds a security rule to an security group
-func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.SecurityRule, error) {
+//AddSecurityRule adds a security rule to an security group
+func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, error) {
 	p, err := ipPermission(&options)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding rule to security groups")
@@ -338,8 +338,8 @@ func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.
 	return &rule, nil
 }
 
-//DeleteRule deletes a security rule from an security group
-func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
+//DeleteSecurityRule deletes a security rule from an security group
+func (mgr *SecurityGroupManager) DeleteSecurityRule(groupID, ruleID string) error {
 	rule := idr(ruleID)
 	ipPerm, err := ipPermissionFromRule(rule)
 	if err != nil {

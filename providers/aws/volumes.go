@@ -14,7 +14,7 @@ type VolumeManager struct {
 	Provider *Provider
 }
 
-func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
+func (mgr *VolumeManager) selectVolumeType(options *api.CreateVolumeOptions) string {
 	if options.MinIOPS < 250 && options.MinDataRate < 250 && options.Size >= 500 {
 		return "sc1"
 	}
@@ -30,7 +30,7 @@ func (mgr *VolumeManager) selectVolumeType(options *api.VolumeOptions) string {
 }
 
 //Create creates a volume with options
-func (mgr *VolumeManager) Create(options api.VolumeOptions) (*api.Volume, error) {
+func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		DryRun:           aws.Bool(false),
@@ -180,15 +180,15 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 }
 
 //Attach attaches a volume to an Server
-func (mgr *VolumeManager) Attach(volumeID string, serverID string, device string) (*api.VolumeAttachment, error) {
+func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.AttachVolume(&ec2.AttachVolumeInput{
-		Device:     aws.String(device),
+		Device:     aws.String(options.DevicePath),
 		DryRun:     aws.Bool(false),
-		InstanceId: aws.String(serverID),
-		VolumeId:   aws.String(volumeID),
+		InstanceId: aws.String(options.ServerID),
+		VolumeId:   aws.String(options.VolumeID),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error attaching volume %s to server %s on device %s", volumeID, serverID, device)
+		return nil, errors.Wrapf(err, "error attaching volume %s to server %s on device %s", options.VolumeID, options.ServerID, options.DevicePath)
 	}
 
 	return attachment(out), nil
@@ -205,21 +205,21 @@ func attachment(out *ec2.VolumeAttachment) *api.VolumeAttachment {
 }
 
 //Detach detach a volume from an Server
-func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) error {
+func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) error {
 	_, err := mgr.Provider.AWSServices.EC2Client.DetachVolume(&ec2.DetachVolumeInput{
 		Device:     nil,
 		DryRun:     aws.Bool(false),
-		Force:      aws.Bool(force),
-		InstanceId: aws.String(serverID),
-		VolumeId:   aws.String(volumeID),
+		Force:      aws.Bool(options.Force),
+		InstanceId: aws.String(options.ServerID),
+		VolumeId:   aws.String(options.VolumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error detaching volume %s from server %s", volumeID, serverID)
+		return errors.Wrapf(err, "error detaching volume %s from server %s", options.VolumeID, options.ServerID)
 	}
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
-		VolumeIds: []*string{&volumeID},
+		VolumeIds: []*string{&options.VolumeID},
 	})
-	return errors.Wrapf(err, "error detaching volume %s from server %s", volumeID, serverID)
+	return errors.Wrapf(err, "error detaching volume %s from server %s", options.VolumeID, options.ServerID)
 }
 
 //Attachment returns the attachment between a volume and an Server
@@ -268,7 +268,7 @@ func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, 
 }
 
 func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume, error) {
-	vType := mgr.selectVolumeType(&api.VolumeOptions{
+	vType := mgr.selectVolumeType(&api.CreateVolumeOptions{
 		Name:        "",
 		Size:        options.Size,
 		MinIOPS:     options.MinIOPS,

@@ -20,7 +20,7 @@ func TestPublicAddresses(t *testing.T) {
 	for _, pool := range pools {
 		fmt.Printf("%v", pool)
 	}
-	ip, err := mgr.Allocate(api.PublicIPAllocationOptions{
+	ip, err := mgr.Create(api.AllocatePublicIPAddressOptions{
 		Name: "test_ip",
 	})
 	assert.NoError(t, err)
@@ -37,7 +37,7 @@ func TestPublicAddresses(t *testing.T) {
 	assert.NoError(t, err)
 	kp, err = sshutils.CreateKeyPair(4096)
 	assert.NoError(t, err)
-	net, err := prov.GetNetworkManager().CreateNetwork(api.NetworkOptions{
+	net, err := prov.GetNetworkManager().CreateNetwork(api.CreateNetworkOptions{
 		CIDR: "10.0.0.0/16",
 		Name: "test_network",
 	})
@@ -48,7 +48,7 @@ func TestPublicAddresses(t *testing.T) {
 		NetworkID:   net.ID,
 	})
 	assert.NoError(t, err)
-	_, err = prov.GetSecurityGroupManager().AddRule(api.SecurityRuleOptions{
+	_, err = prov.GetSecurityGroupManager().AddSecurityRule(api.AddSecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
@@ -56,7 +56,7 @@ func TestPublicAddresses(t *testing.T) {
 		Description:     "grant ssh access",
 	})
 	assert.NoError(t, err)
-	_, err = prov.GetSecurityGroupManager().AddRule(api.SecurityRuleOptions{
+	_, err = prov.GetSecurityGroupManager().AddSecurityRule(api.AddSecurityRuleOptions{
 		SecurityGroupID: sg.ID,
 		Direction:       api.RuleDirectionIngress,
 		Protocol:        api.ProtocolICMP,
@@ -100,7 +100,7 @@ func TestPublicAddresses(t *testing.T) {
 	})
 	assert.NotNil(t, srv)
 	if srv != nil {
-		err = mgr.Associate(api.PublicIPAssociationOptions{
+		err = mgr.Associate(api.AssociatePublicIPOptions{
 			PublicIPId: ip.ID,
 			ServerID:   srv.ID,
 		})
@@ -120,6 +120,6 @@ func TestPublicAddresses(t *testing.T) {
 	assert.NoError(t, err)
 	err = prov.GetNetworkManager().DeleteNetwork(net.ID)
 	assert.NoError(t, err)
-	err = mgr.Release(ip.ID)
+	err = mgr.Delete(ip.ID)
 	assert.NoError(t, err)
 }

@@ -14,7 +14,7 @@ type VolumeManager struct {
 }
 
 //Create creates a volume with options
-func (mgr *VolumeManager) Create(options api.VolumeOptions) (*api.Volume, error) {
+func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, error) {
 	v, err := volumes.Create(mgr.OpenStack.Volume, volumes.CreateOpts{
 		Size:               int(options.Size),
 		AvailabilityZone:   "",
@@ -77,10 +77,10 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 }
 
 //Attach attaches a volume to an Server
-func (mgr *VolumeManager) Attach(volumeID string, serverID string, device string) (*api.VolumeAttachment, error) {
-	va, err := volumeattach.Create(mgr.OpenStack.Compute, serverID, volumeattach.CreateOpts{
-		Device:   device,
-		VolumeID: volumeID,
+func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, error) {
+	va, err := volumeattach.Create(mgr.OpenStack.Compute, options.ServerID, volumeattach.CreateOpts{
+		Device:   options.DevicePath,
+		VolumeID: options.VolumeID,
 	}).Extract()
 	if err != nil {
 		return nil, errors.Wrap(ProviderError(err), "Error attaching volume to server")
@@ -94,13 +94,13 @@ func (mgr *VolumeManager) Attach(volumeID string, serverID string, device string
 }
 
 //Detach detach a volume from an Server
-func (mgr *VolumeManager) Detach(volumeID string, serverID string, force bool) error {
-	att, err := mgr.Attachment(volumeID, serverID)
+func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) error {
+	att, err := mgr.Attachment(options.VolumeID, options.ServerID)
 	if err != nil {
-		return errors.Wrapf(ProviderError(err), "Error detaching volume %s from server %s", volumeID, serverID)
+		return errors.Wrapf(ProviderError(err), "Error detaching volume %s from server %s", options.VolumeID, options.ServerID)
 	}
-	err = volumeattach.Delete(mgr.OpenStack.Compute, serverID, att.ID).Err
-	return errors.Wrapf(err, "Error detaching volume %s from server %s", volumeID, serverID)
+	err = volumeattach.Delete(mgr.OpenStack.Compute, options.ServerID, att.ID).Err
+	return errors.Wrapf(err, "Error detaching volume %s from server %s", options.VolumeID, options.ServerID)
 }
 
 //Attachment returns the attachment between a volume and an Server

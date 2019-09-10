@@ -116,7 +116,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.Equal(s.T(), sn.ID, ni[0].SubnetID)
 	assert.Equal(s.T(), server.ID, ni[0].ServerID)
 	sgID := ni[0].SecurityGroupID
-	rule, err := s.Prov.GetSecurityGroupManager().AddRule(api.SecurityRuleOptions{
+	rule, err := s.Prov.GetSecurityGroupManager().AddSecurityRule(api.AddSecurityRuleOptions{
 		SecurityGroupID: sgID,
 		Direction:       api.RuleDirectionIngress,
 		PortRange:       api.PortRange{From: 22, To: 22},
@@ -126,21 +126,29 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	})
 	assert.NoError(s.T(), err)
 
-	v, err := s.Prov.GetVolumeManager().Create(api.VolumeOptions{
+	v, err := s.Prov.GetVolumeManager().Create(api.CreateVolumeOptions{
 		Name:        "my volume",
 		Size:        5,
 		MinIOPS:     250,
 		MinDataRate: 250,
 	})
 	assert.NoError(s.T(), err)
-	att, err := s.Prov.GetVolumeManager().Attach(v.ID, server.ID, "/dev/sdh")
+	att, err := s.Prov.GetVolumeManager().Attach(api.AttachVolumeOptions{
+		VolumeID:   v.ID,
+		ServerID:   server.ID,
+		DevicePath: "/dev/sdh",
+	})
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), "/dev/sdh", att.Device)
-	err = s.Prov.GetVolumeManager().Detach(v.ID, server.ID, true)
+	err = s.Prov.GetVolumeManager().Detach(api.DetachVolumeOptions{
+		VolumeID: v.ID,
+		ServerID: server.ID,
+		Force:    true,
+	})
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetVolumeManager().Delete(v.ID)
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetSecurityGroupManager().DeleteRule(sgID, rule.ID)
+	err = s.Prov.GetSecurityGroupManager().DeleteSecurityRule(sgID, rule.ID)
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetServerManager().Delete(server.ID)
 	assert.NoError(s.T(), err)

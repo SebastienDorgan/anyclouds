@@ -79,7 +79,7 @@ func (mgr *PublicIPAddressManager) List(options *api.ListPublicIPAddressOptions)
 	}
 	return publicIPs, nil
 }
-func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOptions) (*api.PublicIP, error) {
+func (mgr *PublicIPAddressManager) Create(options api.AllocatePublicIPAddressOptions) (*api.PublicIP, error) {
 	fip, err := floatingips.Create(mgr.OpenStack.Network, &floatingips.CreateOpts{
 		Description:       options.Name,
 		FloatingNetworkID: mgr.OpenStack.ExternalNetworkID,
@@ -96,7 +96,7 @@ func (mgr *PublicIPAddressManager) Allocate(options api.PublicIPAllocationOption
 	}, nil
 }
 
-func (mgr *PublicIPAddressManager) Associate(options api.PublicIPAssociationOptions) error {
+func (mgr *PublicIPAddressManager) Associate(options api.AssociatePublicIPOptions) error {
 	fip, err := floatingips.Get(mgr.OpenStack.Network, options.PublicIPId).Extract()
 	if err != nil {
 		return errors.Wrapf(ProviderError(err), "error associating public ip address %s to server %s", options.PublicIPId, options.ServerID)
@@ -165,7 +165,7 @@ func (mgr *PublicIPAddressManager) Dissociate(publicIPID string) error {
 	return errors.Wrapf(err, "error dissociating public ip address %s", publicIPID)
 
 }
-func (mgr *PublicIPAddressManager) Release(publicIPId string) error {
+func (mgr *PublicIPAddressManager) Delete(publicIPId string) error {
 	err := floatingips.Delete(mgr.OpenStack.Network, publicIPId).ExtractErr()
 	return errors.Wrapf(err, "error releasing public ip address %s", publicIPId)
 }

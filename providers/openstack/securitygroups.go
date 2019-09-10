@@ -106,7 +106,7 @@ func rule(r *rules.SecGroupRule) *api.SecurityRule {
 	}
 }
 
-func ruleOptions(rule *api.SecurityRuleOptions) *rules.CreateOpts {
+func ruleOptions(rule *api.AddSecurityRuleOptions) *rules.CreateOpts {
 	return &rules.CreateOpts{
 		Description:  rule.Description,
 		Direction:    rules.RuleDirection(rule.Direction),
@@ -184,8 +184,8 @@ func (mgr *SecurityGroupManager) Attach(options api.SecurityGroupAttachmentOptio
 	)
 }
 
-//AddRule adds a security rule to an OpenStack security group
-func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.SecurityRule, error) {
+//AddSecurityRule adds a security rule to an OpenStack security group
+func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, error) {
 	opts := ruleOptions(&options)
 	opts.SecGroupID = options.SecurityGroupID
 	r, err := rules.Create(mgr.OpenStack.Network, opts).Extract()
@@ -195,8 +195,8 @@ func (mgr *SecurityGroupManager) AddRule(options api.SecurityRuleOptions) (*api.
 	return rule(r), nil
 }
 
-//DeleteRule deletes a security rule from an OpenStack security group
-func (mgr *SecurityGroupManager) DeleteRule(groupID, ruleID string) error {
+//DeleteSecurityRule deletes a security rule from an OpenStack security group
+func (mgr *SecurityGroupManager) DeleteSecurityRule(groupID, ruleID string) error {
 	err := rules.Delete(mgr.OpenStack.Network, ruleID).ExtractErr()
 	return errors.Wrap(ProviderError(err), "Error deleting security rule")
 
