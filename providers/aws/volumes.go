@@ -30,7 +30,7 @@ func (mgr *VolumeManager) selectVolumeType(options *api.CreateVolumeOptions) str
 }
 
 //Create creates a volume with options
-func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, error) {
+func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, *api.CreateVolumeError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		DryRun:           aws.Bool(false),
@@ -53,25 +53,26 @@ func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, 
 		VolumeType: aws.String(mgr.selectVolumeType(&options)),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating volume")
+		return nil, api.NewCreateVolumeError(err, options)
 	}
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
 		VolumeIds: []*string{out.VolumeId},
 	})
 	if err != nil {
-		_ = mgr.Delete(*out.VolumeId)
-		return nil, errors.Wrapf(err, "error creating volume")
+		err2 := mgr.Delete(*out.VolumeId)
+		err = api.NewErrorStackFromError(err, err2)
+		return nil, api.NewCreateVolumeError(err, options)
 	}
 	return volume(out), nil
 }
 
 //Delete deletes volume identified by id
-func (mgr *VolumeManager) Delete(id string) error {
+func (mgr *VolumeManager) Delete(id string) *api.DeleteVolumeError {
 	_, err := mgr.Provider.AWSServices.EC2Client.DeleteVolume(&ec2.DeleteVolumeInput{
 		DryRun:   aws.Bool(false),
 		VolumeId: aws.String(id),
 	})
-	return errors.Wrapf(err, "error deleting volume %s", id)
+	return api.NewDeleteVolumeError(err, id)
 }
 
 func name(tags []*ec2.Tag) string {
@@ -128,7 +129,7 @@ func volume(v *ec2.Volume) *api.Volume {
 }
 
 //List lists volumes along filter
-func (mgr *VolumeManager) List() ([]api.Volume, error) {
+func (mgr *VolumeManager) List() ([]api.Volume, *api.ListVolumesError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
@@ -144,7 +145,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 		VolumeIds:  nil,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error listing volumes")
+		return nil, api.NewListVolumesError(err)
 	}
 	var volumes []api.Volume
 	for _, res := range out.Volumes {
@@ -154,7 +155,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 }
 
 //Get returns volume details
-func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
+func (mgr *VolumeManager) Get(id string) (*api.Volume, *api.GetVolumeError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
@@ -170,17 +171,17 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 		VolumeIds:  []*string{aws.String(id)},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error listing volumes")
+		return nil, api.NewGetVolumeError(err, id)
 	}
 	if out.Volumes != nil {
-		return nil, errors.Errorf("error listing volumes")
+		return nil, api.NewGetVolumeError(err, id)
 	}
 
 	return volume(out.Volumes[0]), nil
 }
 
 //Attach attaches a volume to an Server
-func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, error) {
+func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, *api.AttachVolumeError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.AttachVolume(&ec2.AttachVolumeInput{
 		Device:     aws.String(options.DevicePath),
 		DryRun:     aws.Bool(false),
@@ -188,7 +189,7 @@ func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAt
 		VolumeId:   aws.String(options.VolumeID),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error attaching volume %s to server %s on device %s", options.VolumeID, options.ServerID, options.DevicePath)
+		return nil, api.NewAttachVolumeError(err, options)
 	}
 
 	return attachment(out), nil
@@ -205,7 +206,7 @@ func attachment(out *ec2.VolumeAttachment) *api.VolumeAttachment {
 }
 
 //Detach detach a volume from an Server
-func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) error {
+func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) *api.DetachVolumeError {
 	_, err := mgr.Provider.AWSServices.EC2Client.DetachVolume(&ec2.DetachVolumeInput{
 		Device:     nil,
 		DryRun:     aws.Bool(false),
@@ -214,16 +215,16 @@ func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) error {
 		VolumeId:   aws.String(options.VolumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error detaching volume %s from server %s", options.VolumeID, options.ServerID)
+		return api.NewDetachVolumeError(err, options)
 	}
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
 		VolumeIds: []*string{&options.VolumeID},
 	})
-	return errors.Wrapf(err, "error detaching volume %s from server %s", options.VolumeID, options.ServerID)
+	return api.NewDetachVolumeError(err, options)
 }
 
-//Attachment returns the attachment between a volume and an Server
-func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
+//attachment returns the attachment between a volume and an Server
+func (mgr *VolumeManager) attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
@@ -251,15 +252,15 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 	return attachment(out.Volumes[0].Attachments[0]), nil
 }
 
-//Attachments returns all the attachments of an Server
-func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
+//ListAttachments returns all the attachments of an Server
+func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
 	var atts []api.VolumeAttachment
 	volumes, err := mgr.List()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error listing attachments of server %s", serverID)
+		return nil, api.NewListVolumeAttachmentsError(err, serverID)
 	}
 	for _, v := range volumes {
-		att, _ := mgr.Attachment(v.ID, serverID)
+		att, _ := mgr.attachment(v.ID, serverID)
 		if att != nil {
 			atts = append(atts, *att)
 		}
@@ -267,7 +268,7 @@ func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, 
 	return atts, nil
 }
 
-func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume, error) {
+func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, *api.ResizeVolumeError) {
 	vType := mgr.selectVolumeType(&api.CreateVolumeOptions{
 		Name:        "",
 		Size:        options.Size,
@@ -282,7 +283,8 @@ func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume,
 		VolumeType: aws.String(vType),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error modifying volume %s", options.ID)
+		return nil, api.NewResizeVolumeError(err, options)
 	}
-	return mgr.Get(*out.VolumeModification.VolumeId)
+	v, err := mgr.Get(*out.VolumeModification.VolumeId)
+	return v, api.NewResizeVolumeError(err, options)
 }
