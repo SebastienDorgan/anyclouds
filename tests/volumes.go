@@ -89,7 +89,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.NoError(s.T(), err)
 	n, err := s.getDefaultNetwork()
 	assert.NoError(s.T(), err)
-	sn, err := s.Prov.GetNetworkManager().CreateSubnet(api.SubnetOptions{
+	sn, err := s.Prov.GetNetworkManager().CreateSubnet(api.CreateSubnetOptions{
 		NetworkID: n.ID,
 		Name:      "subnet",
 		CIDR:      n.CIDR,
@@ -148,7 +148,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetVolumeManager().Delete(v.ID)
 	assert.NoError(s.T(), err)
-	err = s.Prov.GetSecurityGroupManager().DeleteSecurityRule(sgID, rule.ID)
+	err = s.Prov.GetSecurityGroupManager().RemoveSecurityRule(sgID, rule.ID)
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetServerManager().Delete(server.ID)
 	assert.NoError(s.T(), err)

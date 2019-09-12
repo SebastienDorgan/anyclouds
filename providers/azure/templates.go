@@ -46,10 +46,10 @@ func GetMeter(vmMeters []commerce.MeterInfo, sizeName string) *commerce.MeterInf
 	return nil
 }
 
-func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
+func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
 	list, err := mgr.Provider.VirtualMachineSizesClient.List(context.Background(), mgr.Provider.Configuration.Location)
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing server images")
+		return nil, api.NewListServerTemplatesError(err)
 	}
 	var templates []api.ServerTemplate
 	vmMeters, err := mgr.GetVMMeters()
@@ -74,15 +74,15 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 	return templates, nil
 }
 
-func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
+func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, *api.GetServerTemplateError) {
 	list, err := mgr.List()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting server image %s", id)
+		return nil, api.NewGetServerTemplateError(err, id)
 	}
 	for _, tpl := range list {
 		if tpl.ID == id {
 			return &tpl, nil
 		}
 	}
-	return nil, errors.Errorf("error getting server image %s: image not found", id)
+	return nil, api.NewGetServerTemplateError(err, id)
 }

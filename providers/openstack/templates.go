@@ -3,7 +3,6 @@ package openstack
 import (
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
-	"github.com/pkg/errors"
 )
 
 //ServerTemplateManager defines Server template management functions a anyclouds provider must provide
@@ -12,10 +11,10 @@ type ServerTemplateManager struct {
 }
 
 //List returns available VM templates
-func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
+func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
 	page, err := flavors.ListDetail(mgr.OpenStack.Compute, flavors.ListOpts{}).AllPages()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing templates")
+		return nil, api.NewListServerTemplatesError(err)
 	}
 	l, err := flavors.ExtractFlavors(page)
 	var templates []api.ServerTemplate
@@ -36,10 +35,10 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 }
 
 //Get returns the template identified by ids
-func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
+func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, *api.GetServerTemplateError) {
 	f, err := flavors.Get(mgr.OpenStack.Compute, id).Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error getting template")
+		return nil, api.NewGetServerTemplateError(err, id)
 	}
 	return &api.ServerTemplate{
 		ID:                f.ID,

@@ -30,7 +30,7 @@ func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, 
 		Multiattach:        false,
 	}).Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error creating volume")
+		return nil, errors.Wrap(UnwrapOpenStackError(err), "Error creating volume")
 	}
 	return &api.Volume{
 		Name: v.Name,
@@ -42,14 +42,14 @@ func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, 
 //Delete deletes volume identified by id
 func (mgr *VolumeManager) Delete(id string) error {
 	err := volumes.Delete(mgr.OpenStack.Volume, id, volumes.DeleteOpts{Cascade: true}).ExtractErr()
-	return errors.Wrap(ProviderError(err), "Error deleting volume")
+	return errors.Wrap(UnwrapOpenStackError(err), "Error deleting volume")
 }
 
 //List lists volumes along filter
 func (mgr *VolumeManager) List() ([]api.Volume, error) {
 	page, err := volumes.List(mgr.OpenStack.Volume, volumes.ListOpts{}).AllPages()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing volume")
+		return nil, errors.Wrap(UnwrapOpenStackError(err), "Error listing volume")
 	}
 	l, err := volumes.ExtractVolumes(page)
 	var res []api.Volume
@@ -67,7 +67,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, error) {
 func (mgr *VolumeManager) Get(id string) (*api.Volume, error) {
 	v, err := volumes.Get(mgr.OpenStack.Volume, id).Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error getting volume")
+		return nil, errors.Wrap(UnwrapOpenStackError(err), "Error getting volume")
 	}
 	return &api.Volume{
 		Name: v.Name,
@@ -83,7 +83,7 @@ func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAt
 		VolumeID: options.VolumeID,
 	}).Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error attaching volume to server")
+		return nil, errors.Wrap(UnwrapOpenStackError(err), "Error attaching volume to server")
 	}
 	return &api.VolumeAttachment{
 		ID:       va.ID,
@@ -97,7 +97,7 @@ func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAt
 func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) error {
 	att, err := mgr.Attachment(options.VolumeID, options.ServerID)
 	if err != nil {
-		return errors.Wrapf(ProviderError(err), "Error detaching volume %s from server %s", options.VolumeID, options.ServerID)
+		return errors.Wrapf(UnwrapOpenStackError(err), "Error detaching volume %s from server %s", options.VolumeID, options.ServerID)
 	}
 	err = volumeattach.Delete(mgr.OpenStack.Compute, options.ServerID, att.ID).Err
 	return errors.Wrapf(err, "Error detaching volume %s from server %s", options.VolumeID, options.ServerID)
@@ -107,7 +107,7 @@ func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) error {
 func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
 	attachments, err := mgr.Attachments(serverID)
 	if err != nil {
-		return nil, errors.Wrapf(ProviderError(err), "Error retrieving attachment between volume %s and server %s", volumeID, serverID)
+		return nil, errors.Wrapf(UnwrapOpenStackError(err), "Error retrieving attachment between volume %s and server %s", volumeID, serverID)
 	}
 	for _, va := range attachments {
 		if va.VolumeID == volumeID && va.ServerID == serverID {
@@ -121,7 +121,7 @@ func (mgr *VolumeManager) Attachment(volumeID string, serverID string) (*api.Vol
 func (mgr *VolumeManager) Attachments(serverID string) ([]api.VolumeAttachment, error) {
 	page, err := volumeattach.List(mgr.OpenStack.Compute, serverID).AllPages()
 	if err != nil {
-		return nil, errors.Wrapf(ProviderError(err), "Error listing attachments of server %s", serverID)
+		return nil, errors.Wrapf(UnwrapOpenStackError(err), "Error listing attachments of server %s", serverID)
 	}
 	var res []api.VolumeAttachment
 	l, err := volumeattach.ExtractVolumeAttachments(page)
@@ -140,7 +140,7 @@ func (mgr *VolumeManager) Modify(options *api.ModifyVolumeOptions) (*api.Volume,
 	err := volumeactions.ExtendSize(mgr.OpenStack.Volume, options.ID, volumeactions.ExtendSizeOpts{
 		NewSize: int(options.Size)}).Err
 	if err != nil {
-		return nil, errors.Wrapf(ProviderError(err), "Error modifying volume %s", options.ID)
+		return nil, errors.Wrapf(UnwrapOpenStackError(err), "Error modifying volume %s", options.ID)
 	}
 
 	return mgr.Get(options.ID)

@@ -58,3 +58,13 @@ type VolumeManager interface {
 	Detach(options DetachVolumeOptions) error
 	Attachments(serverID string) ([]VolumeAttachment, error)
 }
+
+//CreateVolumeError create volume error type
+type CreateVolumeError struct {
+	ErrorStack
+}
+
+//NewCreateVolumeError creates a new CreateVolumeError
+func NewCreateVolumeError(cause error, options CreateVolumeOptions) *CreateVolumeError {
+	return &CreateVolumeError{ErrorStack: *NewErrorStack(cause, "error creating volume", options)}
+}

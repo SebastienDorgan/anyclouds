@@ -17,7 +17,7 @@ func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 		PublicKey: string(publicKey),
 	}).Extract()
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error listing images")
+		return errors.Wrap(UnwrapOpenStackError(err), "Error listing images")
 	}
 	return nil
 }
@@ -26,7 +26,7 @@ func (mgr *KeyPairManager) Import(name string, publicKey []byte) error {
 func (mgr *KeyPairManager) Delete(name string) error {
 	err := keypairs.Delete(mgr.OpenStack.Compute, name).ExtractErr()
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error listing images")
+		return errors.Wrap(UnwrapOpenStackError(err), "Error listing images")
 	}
 	return nil
 }

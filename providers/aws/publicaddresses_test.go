@@ -13,21 +13,22 @@ import (
 )
 
 func TestPublicAddresses(t *testing.T) {
+	var err error
 	prov := GetProvider()
-	mgr := aws.PublicIPAddressManager{Provider: prov}
+	mgr := aws.PublicIPManager{Provider: prov}
 	pools, err := mgr.ListAvailablePools()
 	assert.NoError(t, err)
 	for _, pool := range pools {
 		fmt.Printf("%v", pool)
 	}
-	ip, err := mgr.Create(api.AllocatePublicIPAddressOptions{
+	ip, err := mgr.Create(api.CreatePublicIPOptions{
 		Name: "test_ip",
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "test_ip", ip.Name)
 	assert.NotEmpty(t, ip.Address)
 	assert.NotEmpty(t, ip.ID)
-	ips, err := mgr.List(&api.ListPublicIPAddressOptions{})
+	ips, err := mgr.List(&api.ListPublicIPsOptions{})
 	assert.NoError(t, err)
 	assert.True(t, len(ips) == 1)
 	assert.Equal(t, ip.ID, ips[0].ID)
@@ -63,7 +64,7 @@ func TestPublicAddresses(t *testing.T) {
 		Description:     "grant icmp access",
 	})
 	assert.NoError(t, err)
-	snet, err := prov.GetNetworkManager().CreateSubnet(api.SubnetOptions{
+	snet, err := prov.GetNetworkManager().CreateSubnet(api.CreateSubnetOptions{
 		NetworkID: net.ID,
 		Name:      "test_subnet",
 		CIDR:      "10.0.0.0/24",
@@ -105,8 +106,8 @@ func TestPublicAddresses(t *testing.T) {
 			ServerID:   srv.ID,
 		})
 		assert.NoError(t, err)
-		nis, err := prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{ServerID: &srv.ID})
-		assert.NoError(t, err)
+		nis, err2 := prov.GetNetworkInterfaceManager().List(&api.ListNetworkInterfacesOptions{ServerID: &srv.ID})
+		assert.NoError(t, err2)
 		assert.Equal(t, ip.Address, nis[0].PublicIPAddress)
 		err = mgr.Dissociate(ip.ID)
 		assert.NoError(t, err)

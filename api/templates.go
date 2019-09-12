@@ -47,6 +47,26 @@ type ServerTemplate struct {
 
 //ServerTemplateManager defines Server template management functions a anyclouds provider must provide
 type ServerTemplateManager interface {
-	List() ([]ServerTemplate, error)
-	Get(id string) (*ServerTemplate, error)
+	List() ([]ServerTemplate, *ListServerTemplatesError)
+	Get(id string) (*ServerTemplate, *GetServerTemplateError)
+}
+
+//ListServerTemplatesError list server templates error type
+type ListServerTemplatesError struct {
+	ErrorStack
+}
+
+//NewListServerTemplatesError  creates a new ListServerTemplatesError
+func NewListServerTemplatesError(cause error) *ListServerTemplatesError {
+	return &ListServerTemplatesError{ErrorStack: *NewErrorStack(cause, "error listing server templates")}
+}
+
+//GetServerTemplateError get server template error type
+type GetServerTemplateError struct {
+	ErrorStack
+}
+
+//NewGetServerTemplateError  creates a new GetServerTemplateError
+func NewGetServerTemplateError(cause error, id string) *GetServerTemplateError {
+	return &GetServerTemplateError{ErrorStack: *NewErrorStack(cause, "error get server templates", id)}
 }

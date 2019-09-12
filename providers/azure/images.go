@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/SebastienDorgan/anyclouds/api"
-	"github.com/pkg/errors"
 	"strings"
 	"time"
 )
@@ -26,32 +25,27 @@ func parseImageID(id string) (publisher, offer, sku, version string) {
 	return
 }
 
-func (mgr *ImageManager) List() ([]api.Image, error) {
+func (mgr *ImageManager) list() ([]api.Image, error) {
 	cfg := mgr.Provider.Configuration
 
 	var images []api.Image
 	for _, publisher := range cfg.VirtualMachineImagePublishers {
 		offers, err := mgr.Provider.VirtualMachineImagesClient.ListOffers(context.Background(), cfg.Location, publisher)
 		if err != nil {
-			return nil, errors.Wrap(err, "error listing images")
+			return nil, err
 		}
 		for _, offer := range *offers.Value {
 			skus, err := mgr.Provider.VirtualMachineImagesClient.ListSkus(context.Background(), cfg.Location, publisher, *offer.Name)
 			if err != nil {
-				return nil, errors.Wrap(err, "error listing images")
+				return nil, err
 			}
 			for _, sku := range *skus.Value {
 				maxResult := int32(100)
 				versions, err := mgr.Provider.VirtualMachineImagesClient.List(context.Background(), cfg.Location, publisher, *offer.Name, *sku.Name, "", &maxResult, "")
 				if err != nil {
-					return nil, errors.Wrap(err, "error listing images")
+					return nil, err
 				}
 				for _, version := range *versions.Value {
-					//img, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, *offer.DeviceName, *sku.DeviceName, *version.DeviceName)
-					//if err != nil {
-					//	return nil, errors.Wrap(err, "error listing images")
-					//}
-					//
 					id := createImageID(publisher, *offer.Name, *sku.Name, *version.Name)
 					images = append(images, api.Image{
 						ID:        id,
@@ -69,12 +63,16 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 
 }
 
-func (mgr *ImageManager) Get(id string) (*api.Image, error) {
+func (mgr *ImageManager) List() ([]api.Image, *api.ListImageError) {
+	l, err := mgr.list()
+	return l, api.NewListImageError(err)
+}
+func (mgr *ImageManager) get(id string) (*api.Image, error) {
 	cfg := mgr.Provider.Configuration
 	publisher, offer, sku, version := parseImageID(id)
 	_, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, offer, sku, version)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting images")
+		return nil, err
 	}
 
 	return &api.Image{
@@ -85,4 +83,9 @@ func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 		CreatedAt: time.Date(2016, 1, 1, 0, 0, 0, 0, nil),
 		UpdatedAt: time.Date(2016, 1, 1, 0, 0, 0, 0, nil),
 	}, nil
+}
+
+func (mgr *ImageManager) Get(id string) (*api.Image, *api.GetImageError) {
+	i, err := mgr.get(id)
+	return i, api.NewGetImageError(err, id)
 }

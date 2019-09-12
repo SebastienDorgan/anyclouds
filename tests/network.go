@@ -56,6 +56,7 @@ type NetworkManagerTestSuite struct {
 
 //TestSubnets canonical tests for subnets
 func (s *NetworkManagerTestSuite) TestSubnets() {
+	var err error
 	n, err := s.Mgr.CreateNetwork(api.CreateNetworkOptions{
 		Name: "test_network",
 		CIDR: "10.0.0.0/16",
@@ -65,7 +66,7 @@ func (s *NetworkManagerTestSuite) TestSubnets() {
 	assert.NoError(s.T(), err)
 	l0 := len(sns)
 
-	sn, err := s.Mgr.CreateSubnet(api.SubnetOptions{
+	sn, err := s.Mgr.CreateSubnet(api.CreateSubnetOptions{
 		CIDR:      "10.0.1.0/24",
 		IPVersion: api.IPVersion4,
 		NetworkID: n.ID,

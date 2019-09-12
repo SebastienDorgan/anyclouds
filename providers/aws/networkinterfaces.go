@@ -1,10 +1,10 @@
 package aws
 
 import (
+	"fmt"
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/pkg/errors"
 )
 
 type NetworkInterfaceManager struct {
@@ -37,7 +37,7 @@ func (mgr *NetworkInterfaceManager) convert(ni *ec2.NetworkInterface) *api.Netwo
 	}
 }
 
-func (mgr *NetworkInterfaceManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfaceManager) create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateNetworkInterface(&ec2.CreateNetworkInterfaceInput{
 		Description:      &options.Name,
 		Groups:           []*string{&options.SecurityGroupID},
@@ -45,22 +45,18 @@ func (mgr *NetworkInterfaceManager) Create(options api.CreateNetworkInterfaceOpt
 		SubnetId:         &options.SubnetID,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating network interface between server %s and subnet %s on network %s",
-			*options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		return nil, err
 	}
 	if options.ServerID == nil {
 		err = mgr.Provider.AWSServices.EC2Client.WaitUntilNetworkInterfaceAvailable(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{out.NetworkInterface.NetworkInterfaceId},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "error creating network interface between server %s and subnet %s on network %s",
-				*options.ServerID,
-				options.SubnetID,
-				options.NetworkID,
-			)
+			if out.NetworkInterface != nil {
+				err2 := mgr.Delete(*out.NetworkInterface.NetworkInterfaceId)
+				err = api.NewErrorStackFromError(err, err2)
+			}
+			return nil, err
 		}
 		return mgr.Get(*out.NetworkInterface.NetworkInterfaceId)
 	}
@@ -72,66 +68,76 @@ func (mgr *NetworkInterfaceManager) Create(options api.CreateNetworkInterfaceOpt
 		_, err2 := mgr.Provider.AWSServices.EC2Client.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
 			NetworkInterfaceId: out.NetworkInterface.NetworkInterfaceId,
 		})
-		err = errors.Wrapf(err2, err.Error())
-		return nil, errors.Wrapf(err, "error creating network interface between server %s and subnet %s on network %s",
-			*options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		return nil, api.NewErrorStackFromError(err, err2)
 	}
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilNetworkInterfaceAvailable(&ec2.DescribeNetworkInterfacesInput{
 		NetworkInterfaceIds: []*string{out.NetworkInterface.NetworkInterfaceId},
 	})
 	if err != nil {
-		_, _ = mgr.Provider.AWSServices.EC2Client.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
+		_, err2 := mgr.Provider.AWSServices.EC2Client.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
 			AttachmentId: att.AttachmentId,
 			Force:        aws.Bool(true),
 		})
-
-		_, _ = mgr.Provider.AWSServices.EC2Client.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
+		err = api.NewErrorStackFromError(err, err2)
+		_, err2 = mgr.Provider.AWSServices.EC2Client.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
 			NetworkInterfaceId: out.NetworkInterface.NetworkInterfaceId,
 		})
-		return nil, errors.Wrapf(err, "error creating network interface between server %s and subnet %s on network %s",
-			*options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		return nil, api.NewErrorStackFromError(err, err2)
 	}
-	ni, err := mgr.Get(*out.NetworkInterface.NetworkInterfaceId)
-	return ni, errors.Wrapf(err, "error creating network interface between server %s and subnet %s on network %s",
-		*options.ServerID,
-		options.SubnetID,
-		options.NetworkID,
-	)
+	return mgr.Get(*out.NetworkInterface.NetworkInterfaceId)
 }
 
-func (mgr *NetworkInterfaceManager) Delete(id string) error {
+func (mgr *NetworkInterfaceManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, *api.CreateNetworkInterfaceError) {
+	ni, err := mgr.create(options)
+	return ni, api.NewCreateNetworkInterfaceError(err, options)
+}
+
+func (mgr *NetworkInterfaceManager) delete(id string) error {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		NetworkInterfaceIds: []*string{&id},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error deleting network interface %s", id)
+		return err
+	}
+	if out.NetworkInterfaces == nil {
+		return fmt.Errorf("network interface %s not found", id)
 	}
 	ni := out.NetworkInterfaces[0]
-	_, _ = mgr.Provider.AWSServices.EC2Client.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
-		AttachmentId: ni.Attachment.AttachmentId,
-		Force:        aws.Bool(true),
-	})
+	var err2 error
+	if ni.Attachment != nil && ni.Attachment.AttachmentId != nil {
+		_, err2 = mgr.Provider.AWSServices.EC2Client.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
+			AttachmentId: ni.Attachment.AttachmentId,
+			Force:        aws.Bool(true),
+		})
+	}
+
 	_, err = mgr.Provider.AWSServices.EC2Client.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
 		NetworkInterfaceId: ni.NetworkInterfaceId,
 	})
-	return errors.Wrapf(err, "error deleting network interface %s", id)
-
+	//if detach fails but delete succeeds then no error is raised
+	if err != nil {
+		err = api.NewErrorStackFromError(err, err2)
+	}
+	return nil
 }
 
-func (mgr *NetworkInterfaceManager) Get(id string) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfaceManager) Delete(id string) *api.DeleteNetworkInterfaceError {
+	return api.NewDeleteNetworkInterfaceError(mgr.delete(id), id)
+}
+
+func (mgr *NetworkInterfaceManager) get(id string) (*api.NetworkInterface, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		NetworkInterfaceIds: []*string{&id},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error deleting network interface %s", id)
+		return nil, err
 	}
 	return mgr.convert(out.NetworkInterfaces[0]), nil
+}
+
+func (mgr *NetworkInterfaceManager) Get(id string) (*api.NetworkInterface, *api.GetNetworkInterfaceError) {
+	ni, err := mgr.get(id)
+	return ni, api.NewGetNetworkInterfaceError(err, id)
 }
 
 func createFilters(options *api.ListNetworkInterfacesOptions) []*ec2.Filter {
@@ -173,12 +179,12 @@ func createFilters(options *api.ListNetworkInterfacesOptions) []*ec2.Filter {
 	return filters
 }
 
-func (mgr *NetworkInterfaceManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, error) {
+func (mgr *NetworkInterfaceManager) list(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		Filters: createFilters(options),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing network interfaces")
+		return nil, err
 	}
 	var list []api.NetworkInterface
 	for _, ni := range out.NetworkInterfaces {
@@ -187,22 +193,30 @@ func (mgr *NetworkInterfaceManager) List(options *api.ListNetworkInterfacesOptio
 	return list, nil
 }
 
-func (mgr *NetworkInterfaceManager) Update(options api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfaceManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, *api.ListNetworkInterfacesError) {
+	nis, err := mgr.list(options)
+	return nis, api.NewListNetworkInterfacesError(err, options)
+}
+
+func (mgr *NetworkInterfaceManager) update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
 	if options.ServerID != nil {
 		out, err := mgr.Provider.AWSServices.EC2Client.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{&options.ID},
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+			return nil, err
+		}
+		if out.NetworkInterfaces != nil {
+			return nil, fmt.Errorf("network interface %s not found", options.ID)
 		}
 		ni := out.NetworkInterfaces[0]
-		if ni.Attachment != nil {
+		if ni.Attachment != nil && ni.Attachment.AttachmentId != nil {
 			_, err = mgr.Provider.AWSServices.EC2Client.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
 				AttachmentId: ni.Attachment.AttachmentId,
 				Force:        aws.Bool(true),
 			})
 			if err != nil {
-				return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+				return nil, err
 			}
 		}
 		_, err = mgr.Provider.AWSServices.EC2Client.AttachNetworkInterface(&ec2.AttachNetworkInterfaceInput{
@@ -210,31 +224,30 @@ func (mgr *NetworkInterfaceManager) Update(options api.UpdateNetworkInterfacesOp
 			NetworkInterfaceId: ni.NetworkInterfaceId,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+			return nil, err
 		}
 		err = mgr.Provider.AWSServices.EC2Client.WaitUntilNetworkInterfaceAvailable(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{&options.ID},
 		})
-		return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+		return nil, err
 	}
 	if options.SecurityGroupID != nil {
 		_, err := mgr.Provider.AWSServices.EC2Client.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
 			Groups:             []*string{options.SecurityGroupID},
 			NetworkInterfaceId: aws.String(options.ID),
-			SourceDestCheck:    nil,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+			return nil, err
 		}
 		err = mgr.Provider.AWSServices.EC2Client.WaitUntilNetworkInterfaceAvailable(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{&options.ID},
 		})
-		return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+		return nil, err
 	}
-	ni, err := mgr.Get(options.ID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
-	}
-	return ni, nil
+	return mgr.Get(options.ID)
+}
 
+func (mgr *NetworkInterfaceManager) Update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, *api.UpdateNetworkInterfaceError) {
+	ni, err := mgr.update(options)
+	return ni, api.NewUpdateNetworkInterfaceError(err, options)
 }

@@ -73,8 +73,8 @@ type Config struct {
 	ExternalNetworkName string
 }
 
-// ProviderError creates an error string from openstack api error
-func ProviderError(err error) error {
+//UnwrapOpenStackError creates an error string from openstack api error
+func UnwrapOpenStackError(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -115,7 +115,7 @@ type Provider struct {
 	ServerManager            ServerManager
 	SecurityGroupManager     SecurityGroupManager
 	VolumeManager            VolumeManager
-	PublicIPAddressManager   PublicIPAddressManager
+	PublicIPAddressManager   PublicIPManager
 
 	ExternalNetworkName string
 	ExternalNetworkID   string
@@ -150,14 +150,14 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	// Openstack client
 	p.client, err = openstack.AuthenticatedClient(opts)
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
+		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 	// Compute API
 	p.Compute, err = openstack.NewComputeV2(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
+		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 	//Network API
 	p.Network, err = openstack.NewNetworkV2(p.client, gc.EndpointOpts{
@@ -165,14 +165,14 @@ func (p *Provider) Init(config io.Reader, format string) error {
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
+		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 	//Volume API
 	p.Volume, err = openstack.NewBlockStorageV3(p.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
-		return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
+		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 
 	p.ImagesManager.OpenStack = p
@@ -188,7 +188,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.ExternalNetworkName = cfg.ExternalNetworkName
 	extNetID, err := networks.IDFromName(p.Network, p.ExternalNetworkName)
 	p.ExternalNetworkID = extNetID
-	return errors.Wrap(ProviderError(err), "Error initializing openstack driver")
+	return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 }
 
 //GetNetworkManager returns an OpenStack NetworkManager
@@ -224,6 +224,6 @@ func (p *Provider) GetServerManager() api.ServerManager {
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return &p.VolumeManager
 }
-func (p *Provider) GetPublicIPAddressManager() api.PublicIPAddressManager {
+func (p *Provider) GetPublicIPAddressManager() api.PublicIPManager {
 	return &p.PublicIPAddressManager
 }

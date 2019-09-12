@@ -3,7 +3,6 @@ package openstack
 import (
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/pkg/errors"
 )
 
 type NetworkInterfacesManager struct {
@@ -30,7 +29,7 @@ func convert(port *ports.Port, publicIPs []api.PublicIP) *api.NetworkInterface {
 	}
 }
 
-func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, *api.CreateNetworkInterfaceError) {
 	up := true
 	ip := ports.IP{
 		IPAddress: "",
@@ -53,28 +52,25 @@ func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOp
 		SecurityGroups: &[]string{options.SecurityGroupID},
 	}).Extract()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating network interface between server %s and subnet %s on network %s",
-			*options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		return nil, api.NewCreateNetworkInterfaceError(err, options)
 	}
 	return convert(p, nil), nil
 }
 
-func (mgr *NetworkInterfacesManager) Delete(id string) error {
+func (mgr *NetworkInterfacesManager) Delete(id string) *api.DeleteNetworkInterfaceError {
 	err := ports.Delete(mgr.OpenStack.Network, id).ExtractErr()
-	return errors.Wrapf(err, "error deleting network interface %s", id)
+	return api.NewDeleteNetworkInterfaceError(err, id)
 }
 
-func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, error) {
-	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPAddressOptions{})
+func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, *api.GetNetworkInterfaceError) {
+	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
 	p, err := ports.Get(mgr.OpenStack.Network, id).Extract()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting network interface %s", id)
+		return nil, api.NewGetNetworkInterfaceError(err, id)
 	}
 	return convert(p, publicIPs), nil
 }
+
 func checkNI(ni *api.NetworkInterface, options *api.ListNetworkInterfacesOptions) bool {
 	if options == nil {
 		return true
@@ -91,7 +87,7 @@ func checkNI(ni *api.NetworkInterface, options *api.ListNetworkInterfacesOptions
 	return true
 }
 
-func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, error) {
+func (mgr *NetworkInterfacesManager) list(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, error) {
 	var netID string
 	if options != nil && options.NetworkID != nil {
 		netID = *options.NetworkID
@@ -100,17 +96,17 @@ func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOpti
 	if options != nil && options.ServerID != nil {
 		srvID = *options.ServerID
 	}
-	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPAddressOptions{})
+	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
 	pages, err := ports.List(mgr.OpenStack.Network, ports.ListOpts{
 		NetworkID: netID,
 		DeviceID:  srvID,
 	}).AllPages()
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing network interfaces")
+		return nil, err
 	}
 	pts, err := ports.ExtractPorts(pages)
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing network interfaces")
+		return nil, err
 	}
 
 	var list []api.NetworkInterface
@@ -124,7 +120,12 @@ func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOpti
 	return list, nil
 }
 
-func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfacesOptions) (*api.NetworkInterface, error) {
+func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, *api.ListNetworkInterfacesError) {
+	l, err := mgr.list(options)
+	return l, api.NewListNetworkInterfacesError(err, options)
+}
+
+func (mgr *NetworkInterfacesManager) update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
 	opts := ports.UpdateOpts{
 		DeviceID: options.ServerID,
 	}
@@ -133,8 +134,13 @@ func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfacesO
 	}
 	port, err := ports.Update(mgr.OpenStack.Network, options.ID, opts).Extract()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error updating network interface %s", options.ID)
+		return nil, err
 	}
-	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPAddressOptions{})
+	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
 	return convert(port, publicIPs), nil
+}
+
+func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, *api.UpdateNetworkInterfaceError) {
+	ni, err := mgr.Update(options)
+	return ni, api.NewUpdateNetworkInterfaceError(err, options)
 }

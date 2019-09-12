@@ -2,7 +2,6 @@ package aws
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -237,8 +236,7 @@ func (mgr *ServerTemplateManager) createFilters() []*pricing.Filter {
 }
 
 //List returns available VM templates
-func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
-
+func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
 	filters := mgr.createFilters()
 	out, err := mgr.Provider.AWSServices.PricingClient.GetProducts(&pricing.GetProductsInput{
 		Filters:       filters,
@@ -247,7 +245,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 		ServiceCode:   aws.String("AmazonEC2"),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing server templates")
+		return nil, api.NewListServerTemplatesError(err)
 	}
 	var result []api.ServerTemplate
 	result = appendProducts(out, result)
@@ -261,8 +259,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, error) {
 		})
 		result = appendProducts(out, result)
 	}
-
-	return result, err
+	return result, api.NewListServerTemplatesError(err)
 }
 
 func appendProducts(out *pricing.GetProductsOutput, result []api.ServerTemplate) []api.ServerTemplate {
@@ -278,7 +275,7 @@ func appendProducts(out *pricing.GetProductsOutput, result []api.ServerTemplate)
 }
 
 //Get returns the template identified by ids
-func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
+func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, *api.GetServerTemplateError) {
 	filters := append(mgr.createFilters(), &pricing.Filter{
 		Field: aws.String("instanceType"),
 		Type:  aws.String("TERM_MATCH"),
@@ -290,7 +287,7 @@ func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
 		ServiceCode:   aws.String("AmazonEC2"),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing server templates")
+		return nil, api.NewGetServerTemplateError(err, id)
 	}
 	for _, price := range out.PriceList {
 		res := toTemplate(price)
@@ -299,5 +296,5 @@ func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, error) {
 		}
 
 	}
-	return nil, fmt.Errorf("error getting Server Template: Server template %s not found", id)
+	return nil, api.NewGetServerTemplateError(err, id)
 }

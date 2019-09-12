@@ -3,7 +3,6 @@ package openstack
 import (
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
-	"github.com/pkg/errors"
 	"time"
 )
 
@@ -12,14 +11,13 @@ type ImageManager struct {
 	OpenStack *Provider
 }
 
-//List returns available image list
-func (mgr *ImageManager) List() ([]api.Image, error) {
+func (mgr *ImageManager) list() ([]api.Image, error) {
 	opts := images.ListOpts{}
 
 	// Retrieve a pager (i.e. a paginated collection)
 	page, err := images.List(mgr.OpenStack.Compute, opts).AllPages()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error listing images")
+		return nil, UnwrapOpenStackError(err)
 	}
 	imageList, err := images.ExtractImages(page)
 
@@ -27,19 +25,24 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 	for _, img := range imageList {
 		im, err := mgr.Get(img.ID)
 		if err != nil {
-			return nil, errors.Wrap(ProviderError(err), "Error listing images")
+			return nil, UnwrapOpenStackError(err)
 		}
 		imgList = append(imgList, *im)
 	}
 	return imgList, nil
 }
 
-//Get returns the image identified by id
-func (mgr *ImageManager) Get(id string) (*api.Image, error) {
+//List returns available image list
+func (mgr *ImageManager) List() ([]api.Image, *api.ListImageError) {
+	l, err := mgr.list()
+	return l, api.NewListImageError(err)
+}
+
+func (mgr *ImageManager) get(id string) (*api.Image, error) {
 	res := images.Get(mgr.OpenStack.Compute, id)
 	img, err := res.Extract()
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error getting image: %s")
+		return nil, UnwrapOpenStackError(err)
 	}
 	if len(img.ID) > 0 {
 		return &api.Image{
@@ -59,7 +62,7 @@ func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 	var ni newImage
 	err = res.ExtractInto(&ni)
 	if err != nil {
-		return nil, errors.Wrap(ProviderError(err), "Error getting image: %s")
+		return nil, UnwrapOpenStackError(err)
 	}
 	createdAt, _ := time.Parse(time.RFC3339, ni.Image["created"].(string))
 	updatedAt, _ := time.Parse(time.RFC3339, ni.Image["updated"].(string))
@@ -74,4 +77,10 @@ func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 		UpdatedAt: updatedAt,
 	}, nil
 
+}
+
+//Get returns the image identified by id
+func (mgr *ImageManager) Get(id string) (*api.Image, *api.GetImageError) {
+	i, err := mgr.get(id)
+	return i, api.NewGetImageError(err, id)
 }

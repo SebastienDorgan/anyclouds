@@ -26,8 +26,8 @@ const (
 	ServerUnknownState ServerState = "UNKNOWN"
 )
 
-//SpotServerOptions options that can be used to create a spot instance
-type SpotServerOptions struct {
+//LowPriorityServerOptions options that can be used to create a spot instance
+type LowPriorityServerOptions struct {
 	HourlyPrice float32
 	Duration    time.Duration
 }
@@ -63,24 +63,94 @@ const (
 
 //CreateServerOptions defines options to use when creating an Server
 type CreateServerOptions struct {
-	Name                  string
-	TemplateID            string
-	ImageID               string
-	DefaultSecurityGroup  string
-	Subnets               []Subnet
-	BootstrapScript       io.Reader
-	KeyPair               sshutils.KeyPair
-	SpotServerOptions     *SpotServerOptions
-	ReservedServerOptions *ReservedServerOptions
+	Name                     string
+	TemplateID               string
+	ImageID                  string
+	DefaultSecurityGroup     string
+	Subnets                  []Subnet
+	BootstrapScript          io.Reader
+	KeyPair                  sshutils.KeyPair
+	LowPriorityServerOptions *LowPriorityServerOptions
+	ReservedServerOptions    *ReservedServerOptions
 }
 
 //ServerManager defines Server management functions an anyclouds provider must provide
 type ServerManager interface {
-	Create(options CreateServerOptions) (*Server, error)
-	Delete(id string) error
-	List() ([]Server, error)
-	Get(id string) (*Server, error)
-	Start(id string) error
-	Stop(id string) error
-	Resize(id string, templateID string) error
+	Create(options CreateServerOptions) (*Server, *CreateServerError)
+	Delete(id string) *DeleteServerError
+	List() ([]Server, *ListServersError)
+	Get(id string) (*Server, *GetServerError)
+	Start(id string) *StartServerError
+	Stop(id string) *StopServerError
+	Resize(id string, templateID string) *ResizeServerError
+}
+
+//CreateServerError create server error type
+type CreateServerError struct {
+	ErrorStack
+}
+
+//NewCreateServerError creates a new CreateServerError
+func NewCreateServerError(cause error, options CreateServerOptions) *CreateServerError {
+	return &CreateServerError{ErrorStack: *NewErrorStack(cause, "error creating server", options)}
+}
+
+//DeleteServerError delete server error type
+type DeleteServerError struct {
+	ErrorStack
+}
+
+//NewDeleteServerError creates a new DeleteServerError
+func NewDeleteServerError(cause error, id string) *DeleteServerError {
+	return &DeleteServerError{ErrorStack: *NewErrorStack(cause, "error deleting server", id)}
+}
+
+//ListServersError list servers error type
+type ListServersError struct {
+	ErrorStack
+}
+
+//NewListServersError creates a new ListServersError
+func NewListServersError(cause error) *ListServersError {
+	return &ListServersError{ErrorStack: *NewErrorStack(cause, "error listing servers")}
+}
+
+//GetServerError get server error type
+type GetServerError struct {
+	ErrorStack
+}
+
+//NewGetServerError creates a new GetServerError
+func NewGetServerError(cause error, id string) *GetServerError {
+	return &GetServerError{ErrorStack: *NewErrorStack(cause, "error getting server", id)}
+}
+
+//StartServerError start server error type
+type StartServerError struct {
+	ErrorStack
+}
+
+//NewStartServerError creates a new StartServerError
+func NewStartServerError(cause error, id string) *StartServerError {
+	return &StartServerError{ErrorStack: *NewErrorStack(cause, "error starting server", id)}
+}
+
+//StopServerError start server error type
+type StopServerError struct {
+	ErrorStack
+}
+
+//NewStopServerError creates a new StopServerError
+func NewStopServerError(cause error, id string) *StopServerError {
+	return &StopServerError{ErrorStack: *NewErrorStack(cause, "error stopping server", id)}
+}
+
+//ResizeServerError start server error type
+type ResizeServerError struct {
+	ErrorStack
+}
+
+//NewResizeServerError creates a new ResizeServerError
+func NewResizeServerError(cause error, id string, templateID string) *ResizeServerError {
+	return &ResizeServerError{ErrorStack: *NewErrorStack(cause, "error resizing server", id, templateID)}
 }

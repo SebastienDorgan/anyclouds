@@ -33,7 +33,7 @@ type Provider struct {
 	SecurityGroupManager     *SecurityGroupManager
 	ServerManager            *ServerManager
 	NetworkInterfacesManager *NetworkInterfacesManager
-	PublicIPAddressManager   *PublicIPAddressManager
+	PublicIPAddressManager   *PublicIPManager
 }
 
 type Config struct {
@@ -52,6 +52,7 @@ type Config struct {
 	OfferNumber                   string
 	Currency                      string
 	RegionInfo                    string
+	PublicAddressesURL            string
 }
 
 func (p *Provider) Init(config io.Reader, format string) error {
@@ -127,7 +128,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.SecurityGroupManager = &SecurityGroupManager{Provider: p}
 	p.ServerManager = &ServerManager{Provider: p}
 	p.NetworkInterfacesManager = &NetworkInterfacesManager{Provider: p}
-	p.PublicIPAddressManager = &PublicIPAddressManager{Provider: p}
+	p.PublicIPAddressManager = &PublicIPManager{Provider: p}
 
 	return nil
 }
@@ -182,6 +183,6 @@ func (p *Provider) GetVolumeManager() api.VolumeManager {
 	panic("implement me")
 }
 
-func (p *Provider) GetPublicIPAddressManager() api.PublicIPAddressManager {
+func (p *Provider) GetPublicIPAddressManager() api.PublicIPManager {
 	return p.PublicIPAddressManager
 }

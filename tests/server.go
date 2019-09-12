@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/SebastienDorgan/anyclouds/sshutils"
-	"github.com/SebastienDorgan/retry"
 	"github.com/SebastienDorgan/talgo"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
 	"strings"
-	"time"
 )
 
 //ServerManagerTestSuite test suite of api.ServerManager
@@ -24,23 +22,6 @@ func weight(tpl api.ServerTemplate) float64 {
 	return float64(tpl.RAMSize)
 }
 
-func noError() retry.Condition {
-	return func(v interface{}, e error) bool {
-		return e == nil
-	}
-}
-
-func DeleteAction(f func(v string) error, id string) retry.Action {
-	return func() (v interface{}, e error) {
-		err := f(id)
-		return nil, err
-	}
-}
-
-func WilfulDelete(f func(v string) error, id string) error {
-	return retry.With(DeleteAction(f, id)).Every(20 * time.Second).For(2 * time.Minute).Until(noError()).Go().LastError
-}
-
 func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network *api.Network, subnet *api.Subnet, err error) {
 	network, err = netm.CreateNetwork(api.CreateNetworkOptions{
 		CIDR: "10.0.0.0/16",
@@ -50,7 +31,7 @@ func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network
 		return nil, nil, err
 	}
 
-	subnet, err = netm.CreateSubnet(api.SubnetOptions{
+	subnet, err = netm.CreateSubnet(api.CreateSubnetOptions{
 		NetworkID: network.ID,
 		Name:      "Test subnet",
 		CIDR:      "10.0.0.0/24",
@@ -172,7 +153,7 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 		KeyPair:         *kp,
 	})
 	assert.NoError(s.T(), err)
-	publicIP, err := s.Prov.GetPublicIPAddressManager().Create(api.AllocatePublicIPAddressOptions{
+	publicIP, err := s.Prov.GetPublicIPAddressManager().Create(api.CreatePublicIPOptions{
 		Name: "ip",
 	})
 	assert.NoError(s.T(), err)
@@ -236,13 +217,13 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 		},
 		BootstrapScript: nil,
 		KeyPair:         *kp,
-		SpotServerOptions: &api.SpotServerOptions{
+		LowPriorityServerOptions: &api.LowPriorityServerOptions{
 			HourlyPrice: tpl.OneDemandPrice / 4,
 			Duration:    0,
 		},
 	})
 	assert.NoError(s.T(), err)
-	publicIP, err := s.Prov.GetPublicIPAddressManager().Create(api.AllocatePublicIPAddressOptions{
+	publicIP, err := s.Prov.GetPublicIPAddressManager().Create(api.CreatePublicIPOptions{
 		Name: "ip",
 	})
 	assert.NoError(s.T(), err)
@@ -284,7 +265,7 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 
 	err = srvMgr.Delete(server.ID)
 	assert.NoError(s.T(), err)
-	err = WilfulDelete(sgm.Delete, sg.ID)
+	err = sgm.Delete(sg.ID)
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetPublicIPAddressManager().Delete(publicIP.ID)
 	assert.NoError(s.T(), err)

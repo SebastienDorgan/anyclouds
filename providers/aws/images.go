@@ -60,23 +60,22 @@ func (mgr *ImageManager) search(owner string, name string) ([]api.Image, error) 
 	return result, nil
 }
 
-//List returns available image list
-func (mgr *ImageManager) List() ([]api.Image, error) {
+func (mgr *ImageManager) list() ([]api.Image, error) {
 	imgsUbuntu, err := mgr.search("099720109477", "ubuntu/images/hvm-ssd/ubuntu-*-*-*-*-????????")
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing image")
+		return nil, err
 	}
 	imgsRHEL, err := mgr.search("309956199498", "RHEL-?.?_HVM_GA*")
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing image")
+		return nil, err
 	}
 	imgsDebian, err := mgr.search("379101102735", "debian-*")
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing image")
+		return nil, err
 	}
 	imgsCentOS, err := mgr.search("410186602215", "CentOS*")
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing image")
+		return nil, err
 	}
 
 	var result []api.Image
@@ -85,6 +84,12 @@ func (mgr *ImageManager) List() ([]api.Image, error) {
 	result = append(result, imgsDebian...)
 	result = append(result, imgsCentOS...)
 	return result, nil
+}
+
+//List returns available image list
+func (mgr *ImageManager) List() ([]api.Image, *api.ListImageError) {
+	l, err := mgr.list()
+	return l, api.NewListImageError(err)
 }
 
 func image(img *ec2.Image) *api.Image {
@@ -99,8 +104,7 @@ func image(img *ec2.Image) *api.Image {
 	}
 }
 
-//Get returns the image identified by id
-func (mgr *ImageManager) Get(id string) (*api.Image, error) {
+func (mgr *ImageManager) get(id string) (*api.Image, error) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeImages(&ec2.DescribeImagesInput{
 		DryRun: aws.Bool(false),
 		ImageIds: []*string{
@@ -108,13 +112,19 @@ func (mgr *ImageManager) Get(id string) (*api.Image, error) {
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting image")
+		return nil, err
 	}
 	if len(out.Images) == 0 {
-		return nil, fmt.Errorf("image %s not found", id)
+		return nil, nil
 	}
 	if len(out.Images) > 1 {
-		return nil, fmt.Errorf("multiple images with the same id: %s", id)
+		return nil, fmt.Errorf("at least to images have the same id")
 	}
 	return image(out.Images[0]), nil
+}
+
+//Get returns the image identified by id
+func (mgr *ImageManager) Get(id string) (*api.Image, *api.GetImageError) {
+	i, err := mgr.get(id)
+	return i, api.NewGetImageError(err, id)
 }

@@ -24,8 +24,8 @@ type CreateNetworkInterfaceOptions struct {
 	PrivateIPAddress *string
 }
 
-//UpdateNetworkInterfacesOptions options can be used to update a network interface card
-type UpdateNetworkInterfacesOptions struct {
+//UpdateNetworkInterfaceOptions options can be used to update a network interface card
+type UpdateNetworkInterfaceOptions struct {
 	ID              string
 	ServerID        *string
 	SecurityGroupID *string
@@ -42,9 +42,74 @@ type ListNetworkInterfacesOptions struct {
 
 //NetworkInterfaceManager an interface providing an abastraction to manipulate network interface cards
 type NetworkInterfaceManager interface {
-	Create(options CreateNetworkInterfaceOptions) (*NetworkInterface, error)
-	Delete(id string) error
-	Get(id string) (*NetworkInterface, error)
-	List(options *ListNetworkInterfacesOptions) ([]NetworkInterface, error)
-	Update(options UpdateNetworkInterfacesOptions) (*NetworkInterface, error)
+	Create(options CreateNetworkInterfaceOptions) (*NetworkInterface, *CreateNetworkInterfaceError)
+	Delete(id string) *DeleteNetworkInterfaceError
+	Get(id string) (*NetworkInterface, *GetNetworkInterfaceError)
+	List(options *ListNetworkInterfacesOptions) ([]NetworkInterface, *ListNetworkInterfacesError)
+	Update(options UpdateNetworkInterfaceOptions) (*NetworkInterface, *UpdateNetworkInterfaceError)
+}
+
+//CreateNetworkInterfaceError create network interface error type
+type CreateNetworkInterfaceError struct {
+	ErrorStack
+}
+
+//NewCreateNetworkInterfaceError create a new CreateNetworkInterfaceError
+func NewCreateNetworkInterfaceError(cause error, options CreateNetworkInterfaceOptions) *CreateNetworkInterfaceError {
+	if cause == nil {
+		return nil
+	}
+	return &CreateNetworkInterfaceError{*NewErrorStack(cause, "error creating network interface", options)}
+}
+
+//DeleteNetworkInterfaceError delete network interface error type
+type DeleteNetworkInterfaceError struct {
+	ErrorStack
+}
+
+//NewDeleteNetworkInterfaceError create a new DeleteNetworkInterfaceError
+func NewDeleteNetworkInterfaceError(cause error, id string) *DeleteNetworkInterfaceError {
+	if cause == nil {
+		return nil
+	}
+	return &DeleteNetworkInterfaceError{*NewErrorStack(cause, "error deleting network interface", id)}
+}
+
+//GetNetworkInterfaceError get network interface error type
+type GetNetworkInterfaceError struct {
+	ErrorStack
+}
+
+//NewGetNetworkInterfaceError create a new GetNetworkInterfaceError
+func NewGetNetworkInterfaceError(cause error, id string) *GetNetworkInterfaceError {
+	if cause == nil {
+		return nil
+	}
+	return &GetNetworkInterfaceError{*NewErrorStack(cause, "error getting network interface", id)}
+}
+
+//ListNetworkInterfacesError list network interface error type
+type ListNetworkInterfacesError struct {
+	ErrorStack
+}
+
+//NewListNetworkInterfacesError create a new ListNetworkInterfacesError
+func NewListNetworkInterfacesError(cause error, options *ListNetworkInterfacesOptions) *ListNetworkInterfacesError {
+	if cause == nil {
+		return nil
+	}
+	return &ListNetworkInterfacesError{*NewErrorStack(cause, "error listing network interfaces", options)}
+}
+
+//UpdateNetworkInterfaceError update network interface error type
+type UpdateNetworkInterfaceError struct {
+	ErrorStack
+}
+
+//NewUpdateNetworkInterfaceError create a new UpdateNetworkInterfaceError
+func NewUpdateNetworkInterfaceError(cause error, options UpdateNetworkInterfaceOptions) *UpdateNetworkInterfaceError {
+	if cause == nil {
+		return nil
+	}
+	return &UpdateNetworkInterfaceError{*NewErrorStack(cause, "error updating network interface", options)}
 }

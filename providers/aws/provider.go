@@ -72,7 +72,7 @@ type Provider struct {
 	ServerManager           ServerManager
 	SecurityGroupManager    SecurityGroupManager
 	VolumeManager           VolumeManager
-	PublicIPAddressManager  PublicIPAddressManager
+	PublicIPAddressManager  PublicIPManager
 }
 
 func getEC2Config(cfg *Config) *aws.Config {
@@ -170,6 +170,6 @@ func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return &p.VolumeManager
 }
 
-func (p *Provider) GetPublicIPAddressManager() api.PublicIPAddressManager {
+func (p *Provider) GetPublicIPAddressManager() api.PublicIPManager {
 	return &p.PublicIPAddressManager
 }

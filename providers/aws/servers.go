@@ -45,8 +45,8 @@ func networkInterfaces(options *api.CreateServerOptions) []*ec2.InstanceNetworkI
 
 func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions, keyName string) (*string, error) {
 	var blockDurationInMinutes *int64
-	if options.SpotServerOptions.Duration > 0 {
-		blockDuration := int64(options.SpotServerOptions.Duration / time.Minute)
+	if options.LowPriorityServerOptions.Duration > 0 {
+		blockDuration := int64(options.LowPriorityServerOptions.Duration / time.Minute)
 		blockDurationInMinutes = aws.Int64(((blockDuration / 60) + 1) * 60)
 	}
 
@@ -62,7 +62,7 @@ func (mgr *ServerManager) createSpotInstance(options *api.CreateServerOptions, k
 			NetworkInterfaces: networkInterfaces(options),
 			UserData:          toString(options.BootstrapScript),
 		},
-		SpotPrice:            aws.String(fmt.Sprintf("%f", options.SpotServerOptions.HourlyPrice)),
+		SpotPrice:            aws.String(fmt.Sprintf("%f", options.LowPriorityServerOptions.HourlyPrice)),
 		BlockDurationMinutes: blockDurationInMinutes,
 		Type:                 aws.String("one-time"),
 	}
@@ -131,6 +131,7 @@ func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOption
 }
 
 func (mgr *ServerManager) searchReservedInstanceOffering(options *api.CreateServerOptions) (*ec2.ReservedInstancesOffering, error) {
+	var err error
 	tpl, err := mgr.Provider.TemplateManager.Get(options.TemplateID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Invalid template ID %s", options.TemplateID)
@@ -139,21 +140,16 @@ func (mgr *ServerManager) searchReservedInstanceOffering(options *api.CreateServ
 		return nil, errors.Errorf("Unknow error getting server template %s", options.TemplateID)
 	}
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeReservedInstancesOfferings(&ec2.DescribeReservedInstancesOfferingsInput{
-		AvailabilityZone:             aws.String(mgr.Provider.Configuration.Region),
-		DryRun:                       aws.Bool(false),
-		Filters:                      nil,
-		IncludeMarketplace:           aws.Bool(false),
-		InstanceTenancy:              nil,
-		InstanceType:                 aws.String(tpl.Name),
-		MaxDuration:                  aws.Int64(int64(options.ReservedServerOptions.Duration / time.Second)),
-		MaxInstanceCount:             aws.Int64(1),
-		MaxResults:                   nil,
-		MinDuration:                  nil,
-		NextToken:                    nil,
-		OfferingClass:                nil,
-		OfferingType:                 nil,
-		ProductDescription:           nil,
-		ReservedInstancesOfferingIds: nil,
+		AvailabilityZone:   aws.String(mgr.Provider.Configuration.Region),
+		DryRun:             aws.Bool(false),
+		Filters:            nil,
+		IncludeMarketplace: aws.Bool(false),
+		InstanceTenancy:    nil,
+		InstanceType:       aws.String(tpl.Name),
+		MaxDuration:        aws.Int64(int64(options.ReservedServerOptions.Duration / time.Second)),
+		MaxInstanceCount:   aws.Int64(1),
+		MaxResults:         nil,
+		NextToken:          nil,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error searching a reserved offering matching server options")
@@ -195,19 +191,19 @@ func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOption
 }
 
 //Create creates an Server with options
-func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, error) {
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, *api.CreateServerError) {
 	var id *string
 	var err error
-	if options.SpotServerOptions != nil && options.ReservedServerOptions != nil {
-		return nil, errors.Errorf("error creating server: SpotServerOptions and ReservedServerOptions are exclusive")
+	if options.LowPriorityServerOptions != nil && options.ReservedServerOptions != nil {
+		return nil, api.NewCreateServerError(err, options)
 	}
 	keyName := uuid.New().String()
 	err = mgr.Provider.KeyPairManager.Import(keyName, options.KeyPair.PublicKey)
 	defer func() { _ = mgr.Provider.KeyPairManager.Delete(keyName) }()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+		return nil, api.NewCreateServerError(err, options)
 	}
-	if options.SpotServerOptions != nil {
+	if options.LowPriorityServerOptions != nil {
 		id, err = mgr.createSpotInstance(&options, keyName)
 	} else if options.ReservedServerOptions != nil {
 		id, err = mgr.createReservedInstance(&options)
@@ -215,34 +211,39 @@ func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, 
 		id, err = mgr.createOnDemandInstance(&options, keyName)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+		return nil, api.NewCreateServerError(err, options)
 	}
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
 		InstanceIds: []*string{id},
 	})
 
 	if err != nil {
-		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+		err2 := mgr.Delete(*id)
+		err := api.NewErrorStackFromError(err, err2)
+		return nil, api.NewCreateServerError(err, options)
 	}
 	err = mgr.Provider.AddTags(*id, map[string]string{"name": options.Name})
 	if err != nil {
-		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+		err2 := mgr.Delete(*id)
+		err := api.NewErrorStackFromError(err, err2)
+		return nil, api.NewCreateServerError(err, options)
 	}
 	err = mgr.addSecurityGroups(&options, *id)
 	if err != nil {
-		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+		err2 := mgr.Delete(*id)
+		err := api.NewErrorStackFromError(err, err2)
+		return nil, api.NewCreateServerError(err, options)
 	}
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceStatusOk(&ec2.DescribeInstanceStatusInput{
 		InstanceIds: []*string{id},
 	})
 	if err != nil {
-		_ = mgr.Delete(*id)
-		return nil, errors.Wrapf(err, "error creating server %s", options.Name)
+		err2 := mgr.Delete(*id)
+		err := api.NewErrorStackFromError(err, err2)
+		return nil, api.NewCreateServerError(err, options)
 	}
-	return mgr.Get(*id)
+	srv, err := mgr.Get(*id)
+	return srv, api.NewCreateServerError(err, options)
 
 }
 
@@ -265,10 +266,11 @@ func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, in
 }
 
 //Delete delete Server identified by id
-func (mgr *ServerManager) Delete(id string) error {
-	publicIps, err := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPAddressOptions{ServerID: &id})
+func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
+	var err error
+	publicIps, err := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPsOptions{ServerID: &id})
 	if err != nil {
-		return errors.Wrapf(err, "error deleting instance %s", id)
+		return api.NewDeleteServerError(err, id)
 	}
 	for _, ip := range publicIps {
 		_ = mgr.Provider.PublicIPAddressManager.Dissociate(ip.ID)
@@ -281,7 +283,7 @@ func (mgr *ServerManager) Delete(id string) error {
 	err = mgr.Provider.AWSServices.EC2Client.WaitUntilInstanceTerminated(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
-	return errors.Wrapf(err, "error deleting instance %s", id)
+	return api.NewDeleteServerError(err, id)
 }
 
 func (mgr *ServerManager) getReservedInstances() ([]*ec2.ReservedInstances, error) {
@@ -304,10 +306,10 @@ func mapToSlice(in map[string]*api.Server) []api.Server {
 }
 
 //List list Servers
-func (mgr *ServerManager) List() ([]api.Server, error) {
+func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing instances")
+		return nil, api.NewListServersError(err)
 	}
 	serverMap := map[string]*api.Server{}
 	for _, res := range out.Reservations {
@@ -400,7 +402,7 @@ func (mgr *ServerManager) getReservedInstance(id string) (*ec2.ReservedInstances
 }
 
 //Get get Servers
-func (mgr *ServerManager) Get(id string) (*api.Server, error) {
+func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
 
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
@@ -408,7 +410,7 @@ func (mgr *ServerManager) Get(id string) (*api.Server, error) {
 		},
 	})
 	if err != nil || out.Reservations == nil || out.Reservations[0].Instances == nil {
-		return nil, errors.Wrapf(err, "error getting instance %s", id)
+		return nil, api.NewGetServerError(err, id)
 	}
 	srv := server(out.Reservations[0].Instances[0])
 	if srv.LeasingType == api.LeasingTypeSpot {
@@ -426,32 +428,32 @@ func (mgr *ServerManager) Get(id string) (*api.Server, error) {
 }
 
 //Start starts an Server
-func (mgr *ServerManager) Start(id string) error {
+func (mgr *ServerManager) Start(id string) *api.StartServerError {
 	_, err := mgr.Provider.AWSServices.EC2Client.StartInstances(&ec2.StartInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "Error starting instance %s", id)
+		return api.NewStartServerError(err, id)
 	}
 	return nil
 }
 
 //Stop stops an Server
-func (mgr *ServerManager) Stop(id string) error {
+func (mgr *ServerManager) Stop(id string) *api.StopServerError {
 	_, err := mgr.Provider.AWSServices.EC2Client.StopInstances(&ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "Error starting instance %s", id)
+		return api.NewStopServerError(err, id)
 	}
 	return nil
 }
 
 //Resize resize a server
-func (mgr *ServerManager) Resize(id string, templateID string) error {
+func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServerError {
 	_, err := mgr.Provider.AWSServices.OpsWorksClient.UpdateInstance(&opsworks.UpdateInstanceInput{})
 	if err != nil {
-		return errors.Wrapf(err, "Error resizing instance %s", id)
+		return api.NewResizeServerError(err, id, templateID)
 	}
 	return nil
 }

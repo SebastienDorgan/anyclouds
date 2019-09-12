@@ -21,7 +21,7 @@ func (mgr *SecurityGroupManager) resourceGroup() string {
 	return mgr.Provider.Configuration.ResourceGroupName
 }
 
-func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, *api.CreateSecurityGroupError) {
 	tags := make(map[string]*string, 1)
 	tags["networkID"] = &options.NetworkID
 	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.SecurityGroup{
@@ -29,15 +29,15 @@ func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.
 		Tags:     tags,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating security group %s", options.Name)
+		return nil, api.NewCreateSecurityGroupError(err, options)
 	}
 	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating security group %s", options.Name)
+		return nil, api.NewCreateSecurityGroupError(err, options)
 	}
 	sg, err := future.Result(mgr.Provider.SecurityGroupsClient)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating security group %s", options.Name)
+		return nil, api.NewCreateSecurityGroupError(err, options)
 	}
 	return &api.SecurityGroup{
 		ID:        *sg.Name,
@@ -47,14 +47,13 @@ func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.
 	}, nil
 }
 
-func (mgr *SecurityGroupManager) Delete(id string) error {
+func (mgr *SecurityGroupManager) Delete(id string) *api.DeleteSecurityGroupError {
 	future, err := mgr.Provider.SecurityGroupsClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
-		return errors.Wrapf(err, "error deleting security group %s", id)
+		return api.NewDeleteSecurityGroupError(err, id)
 	}
 	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
-	return errors.Wrapf(err, "error deleting security group %s", id)
-
+	return api.NewDeleteSecurityGroupError(err, id)
 }
 
 func convertDirection(direction network.SecurityRuleDirection) api.RuleDirection {
@@ -140,10 +139,10 @@ func extractRules(sg *network.SecurityGroup) []api.SecurityRule {
 	return rules
 }
 
-func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, *api.ListSecurityGroupsError) {
 	res, err := mgr.Provider.SecurityGroupsClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing security groups")
+		return nil, api.NewListSecurityGroupsError(err)
 	}
 	var sgs []api.SecurityGroup
 	for _, sg := range res.Values() {
@@ -158,10 +157,10 @@ func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, error) {
 	return sgs, nil
 }
 
-func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
+func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, *api.GetSecurityGroupError) {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), id, "")
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting security group %s", id)
+		return nil, api.NewGetSecurityGroupError(err, id)
 	}
 
 	return &api.SecurityGroup{
@@ -172,48 +171,24 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, error) {
 	}, nil
 }
 
-func (mgr *SecurityGroupManager) Attach(options api.SecurityGroupAttachmentOptions) error {
+func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) *api.AttachSecurityGroupError {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
-		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-			options.SecurityGroupID,
-			options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		return api.NewAttachSecurityGroupError(err, options)
 	}
 	srv, err := mgr.Provider.ServerManager.get(options.ServerID)
 	if err != nil {
-		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-			options.SecurityGroupID,
-			options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		return api.NewAttachSecurityGroupError(err, options)
 	}
 	if srv.NetworkProfile == nil || srv.NetworkProfile.NetworkInterfaces == nil || len(*srv.NetworkProfile.NetworkInterfaces) == 0 {
-		err = errors.Errorf("no network interface found for subnet %s of network %s on server %s",
-			options.SubnetID,
-			options.NetworkID,
-			options.ServerID,
-		)
-		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-			options.SecurityGroupID,
-			options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		err = errors.Errorf("network interface not found")
+		return api.NewAttachSecurityGroupError(err, options)
 	}
 	done := false
 	for _, nir := range *srv.NetworkProfile.NetworkInterfaces {
 		ni, err := mgr.Provider.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), *nir.ID, "")
 		if err != nil {
-			return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-				options.SecurityGroupID,
-				options.ServerID,
-				options.SubnetID,
-				options.NetworkID,
-			)
+			return api.NewAttachSecurityGroupError(err, options)
 		}
 		impacted := false
 		for _, ipc := range *ni.IPConfigurations {
@@ -230,35 +205,16 @@ func (mgr *SecurityGroupManager) Attach(options api.SecurityGroupAttachmentOptio
 		ni.NetworkSecurityGroup = &sg
 		future, err := mgr.Provider.InterfacesClient.CreateOrUpdate(context.Background(), *ni.Name, mgr.resourceGroup(), ni)
 		if err != nil {
-			return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-				options.SecurityGroupID,
-				options.ServerID,
-				options.SubnetID,
-				options.NetworkID,
-			)
+			return api.NewAttachSecurityGroupError(err, options)
 		}
 		err = future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
 		if err != nil {
-			return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-				options.SecurityGroupID,
-				options.ServerID,
-				options.SubnetID,
-				options.NetworkID,
-			)
+			return api.NewAttachSecurityGroupError(err, options)
 		}
 	}
 	if !done {
-		err = errors.Errorf("no network interface found for subnet %s of network %s on server %s",
-			options.SubnetID,
-			options.NetworkID,
-			options.ServerID,
-		)
-		return errors.Wrapf(err, "error attaching security group %s to server %s on subnet %s of network %s",
-			options.SecurityGroupID,
-			options.ServerID,
-			options.SubnetID,
-			options.NetworkID,
-		)
+		err = errors.Errorf("network interface not found")
+		return api.NewAttachSecurityGroupError(err, options)
 	}
 	return nil
 }
@@ -302,10 +258,10 @@ func azSecurityRule(rule *api.AddSecurityRuleOptions) *network.SecurityRule {
 	}
 }
 
-func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, error) {
+func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, *api.AddSecurityRuleError) {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
-		return nil, errors.Wrapf(err, "error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
+		return nil, api.NewAddSecurityRuleError(err, options)
 	}
 	var rules []network.SecurityRule
 	if sg.SecurityRules != nil {
@@ -316,28 +272,28 @@ func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOpti
 	sg.SecurityRules = &rules
 	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, sg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
+		return nil, api.NewAddSecurityRuleError(err, options)
 	}
 	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
+		return nil, api.NewAddSecurityRuleError(err, options)
 	}
 	sg, err = future.Result(mgr.Provider.SecurityGroupsClient)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
+		return nil, api.NewAddSecurityRuleError(err, options)
 	}
 	for _, r := range *sg.SecurityRules {
 		if r.Name == rule.Name {
 			return convertRule(rule, *sg.ID), nil
 		}
 	}
-	return nil, errors.Errorf("error adding security rule -%s- to security group %s ", options.Description, options.SecurityGroupID)
+	return nil, api.NewAddSecurityRuleError(err, options)
 }
 
-func (mgr *SecurityGroupManager) DeleteSecurityRule(groupID, ruleID string) error {
+func (mgr *SecurityGroupManager) RemoveSecurityRule(groupID, ruleID string) *api.RemoveSecurityRuleError {
 	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), groupID, "")
 	if err != nil {
-		return errors.Wrapf(err, "error deleting security rule -%s- to security group %s ", ruleID, groupID)
+		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 	}
 	var rules []network.SecurityRule
 	done := false
@@ -351,15 +307,15 @@ func (mgr *SecurityGroupManager) DeleteSecurityRule(groupID, ruleID string) erro
 		}
 	}
 	if !done {
-		err = errors.Errorf("rule %s does not exist in security group %s", ruleID, groupID)
-		return errors.Wrapf(err, "error deleting security rule -%s- to security group %s ", ruleID, groupID)
+		err = errors.Errorf("rule does not exist")
+		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 	}
 	sg.SecurityRules = &rules
 	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), groupID, sg)
 	if err != nil {
-		return errors.Wrapf(err, "error deleting security rule -%s- to security group %s ", ruleID, groupID)
+		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 	}
 	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
-	return errors.Wrapf(err, "error deleting security rule -%s- to security group %s ", ruleID, groupID)
+	return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 
 }
