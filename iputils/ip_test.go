@@ -14,6 +14,14 @@ func TestConversions(t *testing.T) {
 	assert.Equal(t, "192.168.0.2", ip2.String())
 }
 
+func TestIncrementIP(t *testing.T) {
+	ip := net.ParseIP("192.168.0.1")
+	ui := iputils.IncrementIP(&ip)
+	assert.Equal(t, "192.168.0.2", ui.String())
+	ui = iputils.DecrementIP(ui)
+	assert.Equal(t, "192.168.0.1", ui.String())
+}
+
 func TestRange(t *testing.T) {
 	r, err := iputils.GetRange("192.168.0.0/24")
 	assert.NoError(t, err)
