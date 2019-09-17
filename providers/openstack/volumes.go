@@ -96,7 +96,10 @@ func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) *api.DetachVol
 
 //attachment returns the attachment between a volume and an Server
 func (mgr *VolumeManager) attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
-	attachments, err := mgr.ListAttachments(serverID)
+	attachments, err := mgr.ListAttachments(&api.ListAttachmentsOptions{
+		VolumeID: &volumeID,
+		ServerID: &serverID,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -109,22 +112,45 @@ func (mgr *VolumeManager) attachment(volumeID string, serverID string) (*api.Vol
 }
 
 //ListAttachments returns all the attachments of an Server
-func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
-	page, err := volumeattach.List(mgr.Provider.BaseServices.Compute, serverID).AllPages()
+func (mgr *VolumeManager) ListAttachments(options *api.ListAttachmentsOptions) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
+	if options.ServerID != nil {
+		page, err := volumeattach.List(mgr.Provider.BaseServices.Compute, *options.ServerID).AllPages()
+		if err != nil {
+			return nil, api.NewListVolumeAttachmentsError(UnwrapOpenStackError(err), options)
+		}
+		var res []api.VolumeAttachment
+		l, err := volumeattach.ExtractVolumeAttachments(page)
+		for _, va := range l {
+			if options.VolumeID == nil || *options.VolumeID == va.VolumeID {
+				res = append(res, api.VolumeAttachment{
+					ID:       va.ID,
+					VolumeID: va.VolumeID,
+					ServerID: va.ServerID,
+					Device:   va.Device,
+				})
+			}
+
+		}
+		return res, nil
+	}
+	servers, err := mgr.Provider.ServerManager.List()
 	if err != nil {
-		return nil, api.NewListVolumeAttachmentsError(UnwrapOpenStackError(err), serverID)
+		return nil, api.NewListVolumeAttachmentsError(UnwrapOpenStackError(err), options)
 	}
-	var res []api.VolumeAttachment
-	l, err := volumeattach.ExtractVolumeAttachments(page)
-	for _, va := range l {
-		res = append(res, api.VolumeAttachment{
-			ID:       va.ID,
-			VolumeID: va.VolumeID,
-			ServerID: va.ServerID,
-			Device:   va.Device,
-		})
+	var attachments []api.VolumeAttachment
+	for _, server := range servers {
+		opt := api.ListAttachmentsOptions{
+			VolumeID: options.VolumeID,
+			ServerID: &server.ID,
+		}
+		serverAttachments, err := mgr.ListAttachments(&opt)
+		if err != nil {
+			return nil, api.NewListVolumeAttachmentsError(UnwrapOpenStackError(err), options)
+		}
+		attachments = append(attachments, serverAttachments...)
 	}
-	return res, nil
+	return attachments, nil
+
 }
 
 func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, *api.ResizeVolumeError) {

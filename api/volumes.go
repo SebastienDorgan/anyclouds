@@ -47,6 +47,12 @@ type DetachVolumeOptions struct {
 	Force    bool
 }
 
+//ListAttachmentsOptions options used list volume attachments
+type ListAttachmentsOptions struct {
+	VolumeID *string
+	ServerID *string
+}
+
 //VolumeManager defines volume management functions an anyclouds provider must provide
 type VolumeManager interface {
 	Create(options CreateVolumeOptions) (*Volume, *CreateVolumeError)
@@ -56,7 +62,7 @@ type VolumeManager interface {
 	Resize(options ResizeVolumeOptions) (*Volume, *ResizeVolumeError)
 	Attach(options AttachVolumeOptions) (*VolumeAttachment, *AttachVolumeError)
 	Detach(options DetachVolumeOptions) *DetachVolumeError
-	ListAttachments(serverID string) ([]VolumeAttachment, *ListVolumeAttachmentsError)
+	ListAttachments(options *ListAttachmentsOptions) ([]VolumeAttachment, *ListVolumeAttachmentsError)
 }
 
 //CreateVolumeError create volume error type
@@ -135,6 +141,6 @@ type ListVolumeAttachmentsError struct {
 }
 
 //NewListVolumeAttachmentsError creates a new ListVolumeAttachmentsError
-func NewListVolumeAttachmentsError(cause error, serverID string) *ListVolumeAttachmentsError {
-	return &ListVolumeAttachmentsError{ErrorStack: *NewErrorStack(cause, "error listing attachments volume", serverID)}
+func NewListVolumeAttachmentsError(cause error, options *ListAttachmentsOptions) *ListVolumeAttachmentsError {
+	return &ListVolumeAttachmentsError{ErrorStack: *NewErrorStack(cause, "error listing attachments volume", options)}
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/SebastienDorgan/anyclouds/api"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/pkg/errors"
 	"sort"
 )
 
@@ -198,7 +197,7 @@ func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAt
 
 func attachment(out *ec2.VolumeAttachment) *api.VolumeAttachment {
 	return &api.VolumeAttachment{
-		ID:       fmt.Sprintf("%s##%s", *out.VolumeId, *out.InstanceId),
+		ID:       fmt.Sprintf("%s#%s#%s", *out.VolumeId, *out.InstanceId, *out.Device),
 		VolumeID: *out.VolumeId,
 		ServerID: *out.InstanceId,
 		Device:   *out.Device,
@@ -223,49 +222,57 @@ func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) *api.DetachVol
 	return api.NewDetachVolumeError(err, options)
 }
 
-//attachment returns the attachment between a volume and an Server
-func (mgr *VolumeManager) attachment(volumeID string, serverID string) (*api.VolumeAttachment, error) {
-	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
-		DryRun: aws.Bool(false),
-		Filters: []*ec2.Filter{
-			{
-				Name: aws.String("availability-zone"),
-				Values: []*string{
-					aws.String(mgr.Provider.Configuration.AvailabilityZone),
-				},
+func (mgr *VolumeManager) createFilter(options *api.ListAttachmentsOptions) []*ec2.Filter {
+	return []*ec2.Filter{
+		{
+			Name: aws.String("availability-zone"),
+			Values: []*string{
+				aws.String(mgr.Provider.Configuration.AvailabilityZone),
 			},
 		},
-		MaxResults: nil,
-		NextToken:  nil,
-		VolumeIds:  []*string{aws.String(volumeID)},
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting attachment between volume %s and server %s", volumeID, serverID)
+		{
+			Name: aws.String("attachment.instance-id"),
+			Values: []*string{
+				options.ServerID,
+			},
+		},
+		{
+			Name: aws.String("volume-id"),
+			Values: []*string{
+				options.VolumeID,
+			},
+		},
 	}
-	if out.Volumes == nil {
-		return nil, errors.Errorf("error getting attachment between volume %s and server %s", volumeID, serverID)
-	}
-
-	if out.Volumes[0].Attachments == nil {
-		return nil, nil
-	}
-	return attachment(out.Volumes[0].Attachments[0]), nil
 }
 
-//ListAttachments returns all the attachments of an Server
-func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
-	var attachments []api.VolumeAttachment
-	volumes, err := mgr.List()
+//attachment returns the attachment between a volume and an Server
+func (mgr *VolumeManager) attachments(options *api.ListAttachmentsOptions) ([]api.VolumeAttachment, error) {
+	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
+		DryRun:  aws.Bool(false),
+		Filters: mgr.createFilter(options),
+	})
 	if err != nil {
-		return nil, api.NewListVolumeAttachmentsError(err, serverID)
+		return nil, err
 	}
-	for _, v := range volumes {
-		att, _ := mgr.attachment(v.ID, serverID)
-		if att != nil {
-			attachments = append(attachments, *att)
+	if out.Volumes == nil {
+		return nil, nil
+	}
+	var attachments []api.VolumeAttachment
+	for _, v := range out.Volumes {
+		for _, att := range v.Attachments {
+			if options.ServerID == nil || *options.ServerID == *att.InstanceId {
+				attachments = append(attachments, *attachment(att))
+			}
 		}
 	}
 	return attachments, nil
+}
+
+//ListAttachments returns all the attachments of an Server
+func (mgr *VolumeManager) ListAttachments(options *api.ListAttachmentsOptions) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
+	attachments, err := mgr.attachments(options)
+	return attachments, api.NewListVolumeAttachmentsError(err, options)
+
 }
 
 func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, *api.ResizeVolumeError) {
