@@ -16,7 +16,7 @@ func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api
 }
 
 func (mgr *NetworkManager) createNetwork(options api.CreateNetworkOptions) (*api.Network, error) {
-	future, err := mgr.Provider.VirtualNetworksClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.VirtualNetwork{
+	future, err := mgr.Provider.BaseServices.VirtualNetworksClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.VirtualNetwork{
 		Location: &mgr.Provider.Configuration.Location,
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
 			AddressSpace: &network.AddressSpace{
@@ -27,11 +27,11 @@ func (mgr *NetworkManager) createNetwork(options api.CreateNetworkOptions) (*api
 	if err != nil {
 		return nil, err
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualNetworksClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualNetworksClient.Client)
 	if err != nil {
 		return nil, err
 	}
-	n, err := future.Result(mgr.Provider.VirtualNetworksClient)
+	n, err := future.Result(mgr.Provider.BaseServices.VirtualNetworksClient)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +44,11 @@ func (mgr *NetworkManager) createNetwork(options api.CreateNetworkOptions) (*api
 }
 
 func (mgr *NetworkManager) DeleteNetwork(id string) *api.DeleteNetworkError {
-	future, err := mgr.Provider.VirtualNetworksClient.Delete(context.Background(), mgr.resourceGroup(), id)
+	future, err := mgr.Provider.BaseServices.VirtualNetworksClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewDeleteNetworkError(err, id)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualNetworksClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualNetworksClient.Client)
 	return api.NewDeleteNetworkError(err, id)
 }
 
@@ -57,7 +57,7 @@ func (mgr *NetworkManager) resourceGroup() string {
 }
 
 func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError) {
-	list, err := mgr.Provider.VirtualNetworksClient.List(context.Background(), mgr.resourceGroup())
+	list, err := mgr.Provider.BaseServices.VirtualNetworksClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, api.NewListNetworksError(err)
 	}
@@ -73,7 +73,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError
 }
 
 func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, *api.GetNetworkError) {
-	n, err := mgr.Provider.VirtualNetworksClient.Get(context.Background(), mgr.resourceGroup(), id, "")
+	n, err := mgr.Provider.BaseServices.VirtualNetworksClient.Get(context.Background(), mgr.resourceGroup(), id, "")
 	if err != nil {
 		return nil, api.NewGetNetworkError(err, id)
 	}
@@ -85,7 +85,7 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, *api.GetNetworkE
 }
 
 func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.Subnet, *api.CreateSubnetError) {
-	future, err := mgr.Provider.SubnetsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.NetworkID, options.Name, network.Subnet{
+	future, err := mgr.Provider.BaseServices.SubnetsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.NetworkID, options.Name, network.Subnet{
 		SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
 			AddressPrefix: &options.CIDR,
 		},
@@ -93,11 +93,11 @@ func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.S
 	if err != nil {
 		return nil, api.NewCreateSubnetError(err, options)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SubnetsClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.SubnetsClient.Client)
 	if err != nil {
 		return nil, api.NewCreateSubnetError(err, options)
 	}
-	sn, err := future.Result(mgr.Provider.SubnetsClient)
+	sn, err := future.Result(mgr.Provider.BaseServices.SubnetsClient)
 	if err != nil {
 		return nil, api.NewCreateSubnetError(err, options)
 	}
@@ -111,16 +111,16 @@ func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.S
 }
 
 func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) *api.DeleteSubnetError {
-	future, err := mgr.Provider.SubnetsClient.Delete(context.Background(), mgr.resourceGroup(), networkID, subnetID)
+	future, err := mgr.Provider.BaseServices.SubnetsClient.Delete(context.Background(), mgr.resourceGroup(), networkID, subnetID)
 	if err != nil {
 		return api.NewDeleteSubnetError(err, networkID, subnetID)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SubnetsClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.SubnetsClient.Client)
 	return api.NewDeleteSubnetError(err, networkID, subnetID)
 }
 
 func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.ListSubnetsError) {
-	n, err := mgr.Provider.VirtualNetworksClient.Get(context.Background(), mgr.resourceGroup(), networkID, "")
+	n, err := mgr.Provider.BaseServices.VirtualNetworksClient.Get(context.Background(), mgr.resourceGroup(), networkID, "")
 	if err != nil {
 		return nil, api.NewListSubnetsError(err, networkID)
 	}
@@ -138,7 +138,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.Lis
 }
 
 func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, *api.GetSubnetError) {
-	sn, err := mgr.Provider.SubnetsClient.Get(context.Background(), mgr.resourceGroup(), networkID, subnetID, "")
+	sn, err := mgr.Provider.BaseServices.SubnetsClient.Get(context.Background(), mgr.resourceGroup(), networkID, subnetID, "")
 	if err != nil {
 		return nil, api.NewGetSubnetError(err, networkID, subnetID)
 	}

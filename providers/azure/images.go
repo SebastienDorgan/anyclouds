@@ -30,18 +30,18 @@ func (mgr *ImageManager) list() ([]api.Image, error) {
 
 	var images []api.Image
 	for _, publisher := range cfg.VirtualMachineImagePublishers {
-		offers, err := mgr.Provider.VirtualMachineImagesClient.ListOffers(context.Background(), cfg.Location, publisher)
+		offers, err := mgr.Provider.BaseServices.VirtualMachineImagesClient.ListOffers(context.Background(), cfg.Location, publisher)
 		if err != nil {
 			return nil, err
 		}
 		for _, offer := range *offers.Value {
-			skus, err := mgr.Provider.VirtualMachineImagesClient.ListSkus(context.Background(), cfg.Location, publisher, *offer.Name)
+			skus, err := mgr.Provider.BaseServices.VirtualMachineImagesClient.ListSkus(context.Background(), cfg.Location, publisher, *offer.Name)
 			if err != nil {
 				return nil, err
 			}
 			for _, sku := range *skus.Value {
 				maxResult := int32(100)
-				versions, err := mgr.Provider.VirtualMachineImagesClient.List(context.Background(), cfg.Location, publisher, *offer.Name, *sku.Name, "", &maxResult, "")
+				versions, err := mgr.Provider.BaseServices.VirtualMachineImagesClient.List(context.Background(), cfg.Location, publisher, *offer.Name, *sku.Name, "", &maxResult, "")
 				if err != nil {
 					return nil, err
 				}
@@ -70,7 +70,7 @@ func (mgr *ImageManager) List() ([]api.Image, *api.ListImageError) {
 func (mgr *ImageManager) get(id string) (*api.Image, error) {
 	cfg := mgr.Provider.Configuration
 	publisher, offer, sku, version := parseImageID(id)
-	_, err := mgr.Provider.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, offer, sku, version)
+	_, err := mgr.Provider.BaseServices.VirtualMachineImagesClient.Get(context.Background(), cfg.Location, publisher, offer, sku, version)
 	if err != nil {
 		return nil, err
 	}

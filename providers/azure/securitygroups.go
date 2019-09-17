@@ -24,18 +24,18 @@ func (mgr *SecurityGroupManager) resourceGroup() string {
 func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, *api.CreateSecurityGroupError) {
 	tags := make(map[string]*string, 1)
 	tags["networkID"] = &options.NetworkID
-	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.SecurityGroup{
+	future, err := mgr.Provider.BaseServices.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.SecurityGroup{
 		Location: &mgr.Provider.Configuration.Location,
 		Tags:     tags,
 	})
 	if err != nil {
 		return nil, api.NewCreateSecurityGroupError(err, options)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.SecurityGroupsClient.Client)
 	if err != nil {
 		return nil, api.NewCreateSecurityGroupError(err, options)
 	}
-	sg, err := future.Result(mgr.Provider.SecurityGroupsClient)
+	sg, err := future.Result(mgr.Provider.BaseServices.SecurityGroupsClient)
 	if err != nil {
 		return nil, api.NewCreateSecurityGroupError(err, options)
 	}
@@ -48,11 +48,11 @@ func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.
 }
 
 func (mgr *SecurityGroupManager) Delete(id string) *api.DeleteSecurityGroupError {
-	future, err := mgr.Provider.SecurityGroupsClient.Delete(context.Background(), mgr.resourceGroup(), id)
+	future, err := mgr.Provider.BaseServices.SecurityGroupsClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewDeleteSecurityGroupError(err, id)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.SecurityGroupsClient.Client)
 	return api.NewDeleteSecurityGroupError(err, id)
 }
 
@@ -140,7 +140,7 @@ func extractRules(sg *network.SecurityGroup) []api.SecurityRule {
 }
 
 func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, *api.ListSecurityGroupsError) {
-	res, err := mgr.Provider.SecurityGroupsClient.List(context.Background(), mgr.resourceGroup())
+	res, err := mgr.Provider.BaseServices.SecurityGroupsClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, api.NewListSecurityGroupsError(err)
 	}
@@ -158,7 +158,7 @@ func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, *api.ListSecurityG
 }
 
 func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, *api.GetSecurityGroupError) {
-	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), id, "")
+	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), id, "")
 	if err != nil {
 		return nil, api.NewGetSecurityGroupError(err, id)
 	}
@@ -172,7 +172,7 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, *api.GetSec
 }
 
 func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) *api.AttachSecurityGroupError {
-	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
+	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return api.NewAttachSecurityGroupError(err, options)
 	}
@@ -186,7 +186,7 @@ func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) 
 	}
 	done := false
 	for _, nir := range *srv.NetworkProfile.NetworkInterfaces {
-		ni, err := mgr.Provider.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), *nir.ID, "")
+		ni, err := mgr.Provider.BaseServices.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), *nir.ID, "")
 		if err != nil {
 			return api.NewAttachSecurityGroupError(err, options)
 		}
@@ -203,11 +203,11 @@ func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) 
 		}
 		done = true
 		ni.NetworkSecurityGroup = &sg
-		future, err := mgr.Provider.InterfacesClient.CreateOrUpdate(context.Background(), *ni.Name, mgr.resourceGroup(), ni)
+		future, err := mgr.Provider.BaseServices.InterfacesClient.CreateOrUpdate(context.Background(), *ni.Name, mgr.resourceGroup(), ni)
 		if err != nil {
 			return api.NewAttachSecurityGroupError(err, options)
 		}
-		err = future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
+		err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.InterfacesClient.Client)
 		if err != nil {
 			return api.NewAttachSecurityGroupError(err, options)
 		}
@@ -259,7 +259,7 @@ func azSecurityRule(rule *api.AddSecurityRuleOptions) *network.SecurityRule {
 }
 
 func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, *api.AddSecurityRuleError) {
-	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
+	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return nil, api.NewAddSecurityRuleError(err, options)
 	}
@@ -270,15 +270,15 @@ func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOpti
 	rule := azSecurityRule(&options)
 	rules = append(rules, *rule)
 	sg.SecurityRules = &rules
-	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, sg)
+	future, err := mgr.Provider.BaseServices.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, sg)
 	if err != nil {
 		return nil, api.NewAddSecurityRuleError(err, options)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.SecurityGroupsClient.Client)
 	if err != nil {
 		return nil, api.NewAddSecurityRuleError(err, options)
 	}
-	sg, err = future.Result(mgr.Provider.SecurityGroupsClient)
+	sg, err = future.Result(mgr.Provider.BaseServices.SecurityGroupsClient)
 	if err != nil {
 		return nil, api.NewAddSecurityRuleError(err, options)
 	}
@@ -291,7 +291,7 @@ func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOpti
 }
 
 func (mgr *SecurityGroupManager) RemoveSecurityRule(groupID, ruleID string) *api.RemoveSecurityRuleError {
-	sg, err := mgr.Provider.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), groupID, "")
+	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), groupID, "")
 	if err != nil {
 		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 	}
@@ -311,11 +311,11 @@ func (mgr *SecurityGroupManager) RemoveSecurityRule(groupID, ruleID string) *api
 		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 	}
 	sg.SecurityRules = &rules
-	future, err := mgr.Provider.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), groupID, sg)
+	future, err := mgr.Provider.BaseServices.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), groupID, sg)
 	if err != nil {
 		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.SecurityGroupsClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.SecurityGroupsClient.Client)
 	return api.NewRemoveSecurityRuleError(err, groupID, ruleID)
 
 }

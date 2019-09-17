@@ -16,7 +16,7 @@ import (
 
 //ServerManager defines Server management functions an anyclouds provider must provide
 type ServerManager struct {
-	OpenStack *Provider
+	Provider *Provider
 }
 
 //key_name
@@ -54,12 +54,12 @@ func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*api.S
 		Networks:       mgr.networks(options.Subnets),
 	}
 	keyID := uuid.New().String()
-	err := mgr.OpenStack.KeyPairManager.Import(keyID, options.KeyPair.PublicKey)
-	defer func() { _ = mgr.OpenStack.KeyPairManager.Delete(keyID) }()
+	err := mgr.Provider.KeyPairManager.Import(keyID, options.KeyPair.PublicKey)
+	defer func() { _ = mgr.Provider.KeyPairManager.Delete(keyID) }()
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
 	}
-	srv, err := servers.Create(mgr.OpenStack.Compute, createServerOpts{
+	srv, err := servers.Create(mgr.Provider.BaseServices.Compute, createServerOpts{
 		CreateOpts: opts,
 		KeyName:    "key",
 	}).Extract()
@@ -89,7 +89,7 @@ func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, 
 }
 
 func (mgr *ServerManager) findIP(srvID string) *floatingips.FloatingIP {
-	page, err := floatingips.List(mgr.OpenStack.Compute).AllPages()
+	page, err := floatingips.List(mgr.Provider.BaseServices.Compute).AllPages()
 	if err != nil {
 		return nil
 	}
@@ -108,12 +108,12 @@ func (mgr *ServerManager) findIP(srvID string) *floatingips.FloatingIP {
 //Delete delete Server identified by id
 func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
 	ip := mgr.findIP(id)
-	err := servers.Delete(mgr.OpenStack.Compute, id).ExtractErr()
+	err := servers.Delete(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	if err != nil {
 		return api.NewDeleteServerError(UnwrapOpenStackError(err), id)
 	}
 	if ip != nil {
-		err = floatingips.Delete(mgr.OpenStack.Compute, ip.ID).ExtractErr()
+		err = floatingips.Delete(mgr.Provider.BaseServices.Compute, ip.ID).ExtractErr()
 	}
 	return api.NewDeleteServerError(UnwrapOpenStackError(err), id)
 }
@@ -148,7 +148,7 @@ func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 	if srv == nil {
 		return nil
 	}
-	flavorID, _ := flavors.IDFromName(mgr.OpenStack.Compute, srv.Flavor["original_name"].(string))
+	flavorID, _ := flavors.IDFromName(mgr.Provider.BaseServices.Compute, srv.Flavor["original_name"].(string))
 	return &api.Server{
 		ID:         srv.ID,
 		ImageID:    srv.Image["id"].(string),
@@ -161,7 +161,7 @@ func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 
 //List list Servers
 func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
-	page, err := servers.List(mgr.OpenStack.Compute, servers.ListOpts{}).AllPages()
+	page, err := servers.List(mgr.Provider.BaseServices.Compute, servers.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, api.NewListServersError(UnwrapOpenStackError(err))
 	}
@@ -180,25 +180,25 @@ func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
 
 //Get get Servers
 func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
-	srv, err := servers.Get(mgr.OpenStack.Compute, id).Extract()
+	srv, err := servers.Get(mgr.Provider.BaseServices.Compute, id).Extract()
 	return mgr.server(srv), api.NewGetServerError(UnwrapOpenStackError(err), id)
 }
 
 //Start starts an Server
 func (mgr *ServerManager) Start(id string) *api.StartServerError {
-	err := startstop.Start(mgr.OpenStack.Compute, id).ExtractErr()
+	err := startstop.Start(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	return api.NewStartServerError(UnwrapOpenStackError(err), id)
 }
 
 //Stop stops an Server
 func (mgr *ServerManager) Stop(id string) *api.StopServerError {
-	err := startstop.Stop(mgr.OpenStack.Compute, id).ExtractErr()
+	err := startstop.Stop(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	return api.NewStopServerError(UnwrapOpenStackError(err), id)
 }
 
 func (mgr *ServerManager) waitResize(id string) *retry.Result {
 	get := func() (interface{}, error) {
-		return servers.Get(mgr.OpenStack.Compute, id).Extract()
+		return servers.Get(mgr.Provider.BaseServices.Compute, id).Extract()
 	}
 	finished := func(v interface{}, e error) bool {
 		state := v.(*servers.Server).Status
@@ -209,11 +209,11 @@ func (mgr *ServerManager) waitResize(id string) *retry.Result {
 
 //Resize resize a server
 func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServerError {
-	err := servers.Resize(mgr.OpenStack.Compute, id, servers.ResizeOpts{
+	err := servers.Resize(mgr.Provider.BaseServices.Compute, id, servers.ResizeOpts{
 		FlavorRef: templateID,
 	}).ExtractErr()
 	if err != nil {
-		servers.RevertResize(mgr.OpenStack.Compute, id)
+		servers.RevertResize(mgr.Provider.BaseServices.Compute, id)
 		return api.NewResizeServerError(err, id, templateID)
 	}
 	res := mgr.waitResize(id)
@@ -222,18 +222,18 @@ func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServer
 	}
 	srv := res.LastValue.(*servers.Server)
 	if srv == nil {
-		servers.RevertResize(mgr.OpenStack.Compute, id)
+		servers.RevertResize(mgr.Provider.BaseServices.Compute, id)
 		err := fmt.Errorf("unable to retrive server state")
 		return api.NewResizeServerError(err, id, templateID)
 	}
 	if srv.Status != "RESIZE" {
-		servers.RevertResize(mgr.OpenStack.Compute, id)
+		servers.RevertResize(mgr.Provider.BaseServices.Compute, id)
 		err := fmt.Errorf("unexpected server state: %s", srv.Status)
 		return api.NewResizeServerError(err, id, templateID)
 	}
-	err = servers.ConfirmResize(mgr.OpenStack.Compute, id).ExtractErr()
+	err = servers.ConfirmResize(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	if err != nil {
-		servers.RevertResize(mgr.OpenStack.Compute, id)
+		servers.RevertResize(mgr.Provider.BaseServices.Compute, id)
 		return api.NewResizeServerError(err, id, templateID)
 	}
 	return nil

@@ -8,14 +8,14 @@ import (
 
 //ImageManager defines image management functions a anyclouds provider must provide
 type ImageManager struct {
-	OpenStack *Provider
+	Provider *Provider
 }
 
 func (mgr *ImageManager) list() ([]api.Image, error) {
 	opts := images.ListOpts{}
 
 	// Retrieve a pager (i.e. a paginated collection)
-	page, err := images.List(mgr.OpenStack.Compute, opts).AllPages()
+	page, err := images.List(mgr.Provider.BaseServices.Compute, opts).AllPages()
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
 	}
@@ -39,7 +39,7 @@ func (mgr *ImageManager) List() ([]api.Image, *api.ListImageError) {
 }
 
 func (mgr *ImageManager) get(id string) (*api.Image, error) {
-	res := images.Get(mgr.OpenStack.Compute, id)
+	res := images.Get(mgr.Provider.BaseServices.Compute, id)
 	img, err := res.Extract()
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
@@ -54,7 +54,7 @@ func (mgr *ImageManager) get(id string) (*api.Image, error) {
 			UpdatedAt: img.UpdatedAt,
 		}, nil
 	}
-	//img, err := images.Get(mgr.OpenStack.Compute, id).Extract()
+	//img, err := images.Get(mgr.Provider.BaseServices.Compute, id).Extract()
 	type image map[string]interface{}
 	type newImage struct {
 		Image image `json:"image"`

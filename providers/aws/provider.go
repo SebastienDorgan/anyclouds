@@ -53,8 +53,8 @@ type Configuration struct {
 	AvailabilityZone string
 }
 
-//RawServices aws raw services
-type RawServices struct {
+//BaseServices aws raw services
+type BaseServices struct {
 	EC2Client      *ec2.EC2
 	OpsWorksClient *opsworks.OpsWorks
 	PricingClient  *pricing.Pricing
@@ -63,7 +63,7 @@ type RawServices struct {
 //Provider Provider provider
 type Provider struct {
 	Configuration           Configuration
-	AWSServices             RawServices
+	AWSServices             BaseServices
 	KeyPairManager          KeyPairManager
 	ImagesManager           ImageManager
 	NetworkManager          NetworkManager
@@ -165,7 +165,7 @@ func (p *Provider) GetServerManager() api.ServerManager {
 	return &p.ServerManager
 }
 
-//GetVolumeManager returns aws OpenStack VolumeManager
+//GetVolumeManager returns aws Provider VolumeManager
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return &p.VolumeManager
 }

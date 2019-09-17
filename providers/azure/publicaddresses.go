@@ -114,7 +114,7 @@ func (mgr *PublicIPManager) List(options *api.ListPublicIPsOptions) ([]api.Publi
 		}
 
 	}
-	ips, err := mgr.Provider.PublicIPAddressesClient.List(context.Background(), mgr.Provider.Configuration.ResourceGroupName)
+	ips, err := mgr.Provider.BaseServices.PublicIPAddressesClient.List(context.Background(), mgr.Provider.Configuration.ResourceGroupName)
 	if err != nil {
 		return nil, api.NewListPublicIPsError(err, options)
 	}
@@ -143,7 +143,7 @@ func convertAddress(address *network.PublicIPAddress) *api.PublicIP {
 }
 
 func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.PublicIP, *api.CreatePublicIPError) {
-	future, err := mgr.Provider.PublicIPAddressesClient.CreateOrUpdate(
+	future, err := mgr.Provider.BaseServices.PublicIPAddressesClient.CreateOrUpdate(
 		context.Background(),
 		mgr.Provider.Configuration.ResourceGroupName,
 		options.Name,
@@ -166,11 +166,11 @@ func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.Publ
 	if err != nil {
 		return nil, api.NewCreatePublicIPError(err, options)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.PublicIPAddressesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.PublicIPAddressesClient.Client)
 	if err != nil {
 		return nil, api.NewCreatePublicIPError(err, options)
 	}
-	ip, err := future.Result(mgr.Provider.PublicIPAddressesClient)
+	ip, err := future.Result(mgr.Provider.BaseServices.PublicIPAddressesClient)
 	if err != nil {
 		return nil, api.NewCreatePublicIPError(err, options)
 	}
@@ -205,11 +205,11 @@ func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) *api
 		return api.NewAssociatePublicIPError(err, options)
 	}
 	ipConf.PublicIPAddress = addr
-	future, err := mgr.Provider.InterfacesClient.CreateOrUpdate(context.Background(), mgr.Provider.Configuration.ResourceGroupName, *niToUpdate.Name, *niToUpdate)
+	future, err := mgr.Provider.BaseServices.InterfacesClient.CreateOrUpdate(context.Background(), mgr.Provider.Configuration.ResourceGroupName, *niToUpdate.Name, *niToUpdate)
 	if err != nil {
 		return api.NewAssociatePublicIPError(err, options)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.InterfacesClient.Client)
 
 	return api.NewAssociatePublicIPError(err, options)
 
@@ -237,22 +237,22 @@ func (mgr *PublicIPManager) Dissociate(publicIPId string) *api.DissociatePublicI
 			ipConf.PublicIPAddress = nil
 		}
 	}
-	future, err := mgr.Provider.InterfacesClient.CreateOrUpdate(context.Background(), mgr.Provider.Configuration.ResourceGroupName, *ni.Name, *ni)
+	future, err := mgr.Provider.BaseServices.InterfacesClient.CreateOrUpdate(context.Background(), mgr.Provider.Configuration.ResourceGroupName, *ni.Name, *ni)
 	if err != nil {
 		return api.NewDissociatePublicIPError(err, publicIPId)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.InterfacesClient.Client)
 
 	return api.NewDissociatePublicIPError(err, publicIPId)
 }
 
 func (mgr *PublicIPManager) Delete(publicIPId string) *api.DeletePublicIPError {
-	_, err := mgr.Provider.PublicIPAddressesClient.Delete(context.Background(), mgr.Provider.Configuration.ResourceGroupName, publicIPId)
+	_, err := mgr.Provider.BaseServices.PublicIPAddressesClient.Delete(context.Background(), mgr.Provider.Configuration.ResourceGroupName, publicIPId)
 	return api.NewDeletePublicIPError(err, publicIPId)
 }
 
 func (mgr *PublicIPManager) get(publicIPId string) (*network.PublicIPAddress, error) {
-	addr, err := mgr.Provider.PublicIPAddressesClient.Get(context.Background(), mgr.Provider.Configuration.ResourceGroupName, publicIPId, "")
+	addr, err := mgr.Provider.BaseServices.PublicIPAddressesClient.Get(context.Background(), mgr.Provider.Configuration.ResourceGroupName, publicIPId, "")
 	return &addr, err
 }
 

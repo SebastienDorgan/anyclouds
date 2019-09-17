@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-/*Config fields are the union of those recognized by each OpenStack identity implementation and
+/*Config fields are the union of those recognized by each Provider identity implementation and
 provider.
 */
 type Config struct {
@@ -100,13 +100,22 @@ func UnwrapOpenStackError(err error) error {
 	}
 }
 
-//Provider OpenStack provider
+type BaseServices struct {
+	client  *gc.ProviderClient
+	Compute *gc.ServiceClient
+	Network *gc.ServiceClient
+	Volume  *gc.ServiceClient
+}
+
+type Configuration struct {
+	ExternalNetworkName string
+	ExternalNetworkID   string
+}
+
+//Provider Provider provider
 type Provider struct {
-	client                   *gc.ProviderClient
-	Compute                  *gc.ServiceClient
-	Network                  *gc.ServiceClient
-	Volume                   *gc.ServiceClient
-	Name                     string
+	Config                   Configuration
+	BaseServices             BaseServices
 	KeyPairManager           KeyPairManager
 	ImagesManager            ImageManager
 	NetworkManager           NetworkManager
@@ -116,12 +125,9 @@ type Provider struct {
 	SecurityGroupManager     SecurityGroupManager
 	VolumeManager            VolumeManager
 	PublicIPAddressManager   PublicIPManager
-
-	ExternalNetworkName string
-	ExternalNetworkID   string
 }
 
-//Init initialize OpenStack Provider
+//Init initialize Provider Provider
 func (p *Provider) Init(config io.Reader, format string) error {
 	v := viper.New()
 	v.SetConfigType(format)
@@ -148,19 +154,19 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	}
 
 	// Openstack client
-	p.client, err = openstack.AuthenticatedClient(opts)
+	p.BaseServices.client, err = openstack.AuthenticatedClient(opts)
 	if err != nil {
 		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 	// Compute API
-	p.Compute, err = openstack.NewComputeV2(p.client, gc.EndpointOpts{
+	p.BaseServices.Compute, err = openstack.NewComputeV2(p.BaseServices.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
 		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 	//Network API
-	p.Network, err = openstack.NewNetworkV2(p.client, gc.EndpointOpts{
+	p.BaseServices.Network, err = openstack.NewNetworkV2(p.BaseServices.client, gc.EndpointOpts{
 		Name:   "neutron",
 		Region: cfg.Region,
 	})
@@ -168,30 +174,30 @@ func (p *Provider) Init(config io.Reader, format string) error {
 		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 	//Volume API
-	p.Volume, err = openstack.NewBlockStorageV3(p.client, gc.EndpointOpts{
+	p.BaseServices.Volume, err = openstack.NewBlockStorageV3(p.BaseServices.client, gc.EndpointOpts{
 		Region: cfg.Region,
 	})
 	if err != nil {
 		return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 	}
 
-	p.ImagesManager.OpenStack = p
-	p.NetworkManager.OpenStack = p
-	p.NetworkInterfacesManager.OpenStack = p
-	p.ServerManager.OpenStack = p
-	p.TemplateManager.OpenStack = p
-	p.VolumeManager.OpenStack = p
-	p.SecurityGroupManager.OpenStack = p
-	p.KeyPairManager.OpenStack = p
+	p.ImagesManager.Provider = p
+	p.NetworkManager.Refactor = p
+	p.NetworkInterfacesManager.Provider = p
+	p.ServerManager.Provider = p
+	p.TemplateManager.Provider = p
+	p.VolumeManager.Provider = p
+	p.SecurityGroupManager.Provider = p
+	p.KeyPairManager.Provider = p
 	p.PublicIPAddressManager.OpenStack = p
 
-	p.ExternalNetworkName = cfg.ExternalNetworkName
-	extNetID, err := networks.IDFromName(p.Network, p.ExternalNetworkName)
-	p.ExternalNetworkID = extNetID
+	p.Config.ExternalNetworkName = cfg.ExternalNetworkName
+	extNetID, err := networks.IDFromName(p.BaseServices.Network, p.Config.ExternalNetworkName)
+	p.Config.ExternalNetworkID = extNetID
 	return errors.Wrap(UnwrapOpenStackError(err), "Error initializing openstack driver")
 }
 
-//GetNetworkManager returns an OpenStack NetworkManager
+//GetNetworkManager returns an Provider NetworkManager
 func (p *Provider) GetNetworkManager() api.NetworkManager {
 	return &p.NetworkManager
 }
@@ -200,27 +206,27 @@ func (p *Provider) GetNetworkInterfaceManager() api.NetworkInterfaceManager {
 	return &p.NetworkInterfacesManager
 }
 
-//GetImageManager returns an OpenStack ImageManager
+//GetImageManager returns an Provider ImageManager
 func (p *Provider) GetImageManager() api.ImageManager {
 	return &p.ImagesManager
 }
 
-//GetTemplateManager returns an OpenStack ServerTemplateManager
+//GetTemplateManager returns an Provider ServerTemplateManager
 func (p *Provider) GetTemplateManager() api.ServerTemplateManager {
 	return &p.TemplateManager
 }
 
-//GetSecurityGroupManager returns an OpenStack SecurityGroupManager
+//GetSecurityGroupManager returns an Provider SecurityGroupManager
 func (p *Provider) GetSecurityGroupManager() api.SecurityGroupManager {
 	return &p.SecurityGroupManager
 }
 
-//GetServerManager returns an OpenStack ServerManager
+//GetServerManager returns an Provider ServerManager
 func (p *Provider) GetServerManager() api.ServerManager {
 	return &p.ServerManager
 }
 
-//GetVolumeManager returns an OpenStack VolumeManager
+//GetVolumeManager returns an Provider VolumeManager
 func (p *Provider) GetVolumeManager() api.VolumeManager {
 	return &p.VolumeManager
 }

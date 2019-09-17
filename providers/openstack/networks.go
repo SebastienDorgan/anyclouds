@@ -11,7 +11,7 @@ import (
 
 //NetworkManager defines networking functions a anyclouds provider must provide
 type NetworkManager struct {
-	OpenStack *Provider
+	Refactor *Provider
 }
 
 //CreateNetwork creates a network
@@ -22,7 +22,7 @@ func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api
 		Name:         options.Name,
 		Description:  options.CIDR,
 	}
-	network, err := networks.Create(mgr.OpenStack.Network, opts).Extract()
+	network, err := networks.Create(mgr.Refactor.BaseServices.Network, opts).Extract()
 	if err != nil {
 		return nil, api.NewCreateNetworkError(UnwrapOpenStackError(err), options)
 	}
@@ -52,7 +52,7 @@ func (mgr *NetworkManager) DeleteNetwork(id string) *api.DeleteNetworkError {
 		}
 	}
 
-	err = networks.Delete(mgr.OpenStack.Network, id).ExtractErr()
+	err = networks.Delete(mgr.Refactor.BaseServices.Network, id).ExtractErr()
 	if err != nil {
 		return api.NewDeleteNetworkError(err, id)
 	}
@@ -70,7 +70,7 @@ func network(net *networks.Network) *api.Network {
 //ListNetworks lists networks
 func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError) {
 	opts := networks.ListOpts{}
-	page, err := networks.List(mgr.OpenStack.Network, opts).AllPages()
+	page, err := networks.List(mgr.Refactor.BaseServices.Network, opts).AllPages()
 	if err != nil {
 		return nil, api.NewListNetworksError(err)
 	}
@@ -87,7 +87,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError
 
 //GetNetwork returns the configuration of the network identified by id
 func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, *api.GetNetworkError) {
-	n, err := networks.Get(mgr.OpenStack.Network, id).Extract()
+	n, err := networks.Get(mgr.Refactor.BaseServices.Network, id).Extract()
 	if err != nil {
 		return nil, api.NewGetNetworkError(err, id)
 	}
@@ -96,7 +96,7 @@ func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, *api.GetNetworkE
 
 func (mgr *NetworkManager) createRouter(networkID string) (*routers.Router, error) {
 	up := true
-	netID, err := networks.IDFromName(mgr.OpenStack.Network, mgr.OpenStack.ExternalNetworkName)
+	netID, err := networks.IDFromName(mgr.Refactor.BaseServices.Network, mgr.Refactor.Config.ExternalNetworkName)
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
 	}
@@ -110,14 +110,14 @@ func (mgr *NetworkManager) createRouter(networkID string) (*routers.Router, erro
 		GatewayInfo:  &gwi,
 	}
 
-	router, err := routers.Create(mgr.OpenStack.Network, createOpts).Extract()
+	router, err := routers.Create(mgr.Refactor.BaseServices.Network, createOpts).Extract()
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
 	}
 	return router, nil
 }
 func (mgr *NetworkManager) attachSubnetToRouter(routerID, subnetID string) error {
-	_, err := routers.AddInterface(mgr.OpenStack.Network, routerID, routers.AddInterfaceOpts{
+	_, err := routers.AddInterface(mgr.Refactor.BaseServices.Network, routerID, routers.AddInterfaceOpts{
 		SubnetID: subnetID,
 	}).Extract()
 	if err != nil {
@@ -126,12 +126,12 @@ func (mgr *NetworkManager) attachSubnetToRouter(routerID, subnetID string) error
 	return nil
 }
 func (mgr *NetworkManager) deleteRouter(id string) error {
-	err := routers.Delete(mgr.OpenStack.Network, id).ExtractErr()
+	err := routers.Delete(mgr.Refactor.BaseServices.Network, id).ExtractErr()
 	return UnwrapOpenStackError(err)
 }
 
 func (mgr *NetworkManager) findRouter(name string) (*routers.Router, error) {
-	page, err := routers.List(mgr.OpenStack.Network, routers.ListOpts{Name: name}).AllPages()
+	page, err := routers.List(mgr.Refactor.BaseServices.Network, routers.ListOpts{Name: name}).AllPages()
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
 	}
@@ -163,7 +163,7 @@ func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.S
 		return nil, api.NewCreateSubnetError(err, options)
 	}
 	// Execute the operation and get back a subnets.Subnet struct
-	subnet, err := subnets.Create(mgr.OpenStack.Network, opts).Extract()
+	subnet, err := subnets.Create(mgr.Refactor.BaseServices.Network, opts).Extract()
 	if err != nil {
 		return nil, api.NewCreateSubnetError(err, options)
 	}
@@ -186,13 +186,13 @@ func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.S
 
 //DeleteSubnet deletes the subnet identified by id
 func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) *api.DeleteSubnetError {
-	err := subnets.Delete(mgr.OpenStack.Network, subnetID).ExtractErr()
+	err := subnets.Delete(mgr.Refactor.BaseServices.Network, subnetID).ExtractErr()
 	return api.NewDeleteSubnetError(UnwrapOpenStackError(err), networkID, subnetID)
 }
 
 //ListSubnets lists the subnet
 func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.ListSubnetsError) {
-	page, err := subnets.List(mgr.OpenStack.Network, subnets.ListOpts{
+	page, err := subnets.List(mgr.Refactor.BaseServices.Network, subnets.ListOpts{
 		NetworkID: networkID,
 	}).AllPages()
 	if err != nil {
@@ -217,7 +217,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.Lis
 }
 
 func (mgr *NetworkManager) listAllSubnets() ([]api.Subnet, error) {
-	page, err := subnets.List(mgr.OpenStack.Network, subnets.ListOpts{}).AllPages()
+	page, err := subnets.List(mgr.Refactor.BaseServices.Network, subnets.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, UnwrapOpenStackError(err)
 	}
@@ -241,7 +241,7 @@ func (mgr *NetworkManager) listAllSubnets() ([]api.Subnet, error) {
 
 //GetSubnet returns the configuration of the subnet identified by id
 func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, *api.GetSubnetError) {
-	sn, err := subnets.Get(mgr.OpenStack.Network, subnetID).Extract()
+	sn, err := subnets.Get(mgr.Refactor.BaseServices.Network, subnetID).Extract()
 	if err != nil {
 		return nil, api.NewGetSubnetError(UnwrapOpenStackError(err), networkID, subnetID)
 	}

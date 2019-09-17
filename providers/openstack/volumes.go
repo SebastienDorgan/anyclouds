@@ -9,12 +9,12 @@ import (
 
 //VolumeManager defines volume management functions an anyclouds provider must provide
 type VolumeManager struct {
-	OpenStack *Provider
+	Provider *Provider
 }
 
 //Create creates a volume with options
 func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, *api.CreateVolumeError) {
-	v, err := volumes.Create(mgr.OpenStack.Volume, volumes.CreateOpts{
+	v, err := volumes.Create(mgr.Provider.BaseServices.Volume, volumes.CreateOpts{
 		Size:        int(options.Size),
 		Metadata:    nil,
 		Name:        options.Name,
@@ -32,13 +32,13 @@ func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, 
 
 //Delete deletes volume identified by id
 func (mgr *VolumeManager) Delete(id string) *api.DeleteVolumeError {
-	err := volumes.Delete(mgr.OpenStack.Volume, id, volumes.DeleteOpts{Cascade: true}).ExtractErr()
+	err := volumes.Delete(mgr.Provider.BaseServices.Volume, id, volumes.DeleteOpts{Cascade: true}).ExtractErr()
 	return api.NewDeleteVolumeError(UnwrapOpenStackError(err), id)
 }
 
 //List lists volumes along filter
 func (mgr *VolumeManager) List() ([]api.Volume, *api.ListVolumesError) {
-	page, err := volumes.List(mgr.OpenStack.Volume, volumes.ListOpts{}).AllPages()
+	page, err := volumes.List(mgr.Provider.BaseServices.Volume, volumes.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, api.NewListVolumesError(UnwrapOpenStackError(err))
 	}
@@ -56,7 +56,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, *api.ListVolumesError) {
 
 //Get returns volume details
 func (mgr *VolumeManager) Get(id string) (*api.Volume, *api.GetVolumeError) {
-	v, err := volumes.Get(mgr.OpenStack.Volume, id).Extract()
+	v, err := volumes.Get(mgr.Provider.BaseServices.Volume, id).Extract()
 	if err != nil {
 		return nil, api.NewGetVolumeError(UnwrapOpenStackError(err), id)
 	}
@@ -69,7 +69,7 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, *api.GetVolumeError) {
 
 //Attach attaches a volume to an Server
 func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, *api.AttachVolumeError) {
-	va, err := volumeattach.Create(mgr.OpenStack.Compute, options.ServerID, volumeattach.CreateOpts{
+	va, err := volumeattach.Create(mgr.Provider.BaseServices.Compute, options.ServerID, volumeattach.CreateOpts{
 		Device:   options.DevicePath,
 		VolumeID: options.VolumeID,
 	}).Extract()
@@ -90,7 +90,7 @@ func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) *api.DetachVol
 	if err != nil {
 		return api.NewDetachVolumeError(UnwrapOpenStackError(err), options)
 	}
-	err = volumeattach.Delete(mgr.OpenStack.Compute, options.ServerID, att.ID).Err
+	err = volumeattach.Delete(mgr.Provider.BaseServices.Compute, options.ServerID, att.ID).Err
 	return api.NewDetachVolumeError(UnwrapOpenStackError(err), options)
 }
 
@@ -110,7 +110,7 @@ func (mgr *VolumeManager) attachment(volumeID string, serverID string) (*api.Vol
 
 //ListAttachments returns all the attachments of an Server
 func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
-	page, err := volumeattach.List(mgr.OpenStack.Compute, serverID).AllPages()
+	page, err := volumeattach.List(mgr.Provider.BaseServices.Compute, serverID).AllPages()
 	if err != nil {
 		return nil, api.NewListVolumeAttachmentsError(UnwrapOpenStackError(err), serverID)
 	}
@@ -128,7 +128,7 @@ func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachme
 }
 
 func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, *api.ResizeVolumeError) {
-	err := volumeactions.ExtendSize(mgr.OpenStack.Volume, options.ID, volumeactions.ExtendSizeOpts{
+	err := volumeactions.ExtendSize(mgr.Provider.BaseServices.Volume, options.ID, volumeactions.ExtendSizeOpts{
 		NewSize: int(options.Size)}).Err
 	if err != nil {
 		return nil, api.NewResizeVolumeError(UnwrapOpenStackError(err), options)

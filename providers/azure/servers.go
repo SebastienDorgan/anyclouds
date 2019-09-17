@@ -53,7 +53,7 @@ func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, 
 	if options.LowPriorityServerOptions != nil {
 		priority = compute.Low
 	}
-	future, err := mgr.Provider.VirtualMachinesClient.CreateOrUpdate(
+	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.CreateOrUpdate(
 		context.Background(),
 		mgr.resourceGroup(),
 		options.Name,
@@ -98,11 +98,11 @@ func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, 
 	if err != nil {
 		return nil, api.NewCreateServerError(err, options)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualMachinesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualMachinesClient.Client)
 	if err != nil {
 		return nil, api.NewCreateServerError(err, options)
 	}
-	vm, err := future.Result(mgr.Provider.VirtualMachinesClient)
+	vm, err := future.Result(mgr.Provider.BaseServices.VirtualMachinesClient)
 	if err != nil {
 		return nil, api.NewCreateServerError(err, options)
 	}
@@ -135,16 +135,16 @@ func (mgr *ServerManager) server(vm *compute.VirtualMachine) *api.Server {
 }
 
 func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
-	future, err := mgr.Provider.VirtualMachinesClient.Delete(context.Background(), mgr.resourceGroup(), id)
+	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewDeleteServerError(err, id)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualMachinesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualMachinesClient.Client)
 	return api.NewDeleteServerError(err, id)
 }
 
 func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
-	it, err := mgr.Provider.VirtualMachinesClient.List(context.Background(), mgr.resourceGroup())
+	it, err := mgr.Provider.BaseServices.VirtualMachinesClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, api.NewListServersError(err)
 	}
@@ -163,7 +163,7 @@ func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
 }
 
 func (mgr *ServerManager) list() ([]compute.VirtualMachine, error) {
-	it, err := mgr.Provider.VirtualMachinesClient.List(context.Background(), mgr.resourceGroup())
+	it, err := mgr.Provider.BaseServices.VirtualMachinesClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (mgr *ServerManager) list() ([]compute.VirtualMachine, error) {
 }
 
 func (mgr *ServerManager) get(id string) (*compute.VirtualMachine, error) {
-	res, err := mgr.Provider.VirtualMachinesClient.Get(context.Background(), mgr.resourceGroup(), id, "")
+	res, err := mgr.Provider.BaseServices.VirtualMachinesClient.Get(context.Background(), mgr.resourceGroup(), id, "")
 	return &res, err
 }
 
@@ -192,20 +192,20 @@ func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
 }
 
 func (mgr *ServerManager) Start(id string) *api.StartServerError {
-	future, err := mgr.Provider.VirtualMachinesClient.Start(context.Background(), mgr.resourceGroup(), id)
+	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.Start(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewStartServerError(err, id)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualMachinesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualMachinesClient.Client)
 	return api.NewStartServerError(err, id)
 }
 
 func (mgr *ServerManager) Stop(id string) *api.StopServerError {
-	future, err := mgr.Provider.VirtualMachinesClient.PowerOff(context.Background(), mgr.resourceGroup(), id, to.BoolPtr(false))
+	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.PowerOff(context.Background(), mgr.resourceGroup(), id, to.BoolPtr(false))
 	if err != nil {
 		return api.NewStopServerError(err, id)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualMachinesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualMachinesClient.Client)
 	return api.NewStopServerError(err, id)
 }
 
@@ -215,10 +215,10 @@ func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServer
 		return api.NewResizeServerError(err, id, templateID)
 	}
 	vm.HardwareProfile.VMSize = compute.VirtualMachineSizeTypes(templateID)
-	future, err := mgr.Provider.VirtualMachinesClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), id, *vm)
+	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), id, *vm)
 	if err != nil {
 		return api.NewResizeServerError(err, id, templateID)
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.VirtualMachinesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.VirtualMachinesClient.Client)
 	return api.NewResizeServerError(err, id, templateID)
 }

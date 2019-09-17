@@ -6,7 +6,7 @@ import (
 )
 
 type NetworkInterfacesManager struct {
-	OpenStack *Provider
+	Provider *Provider
 }
 
 func convert(port *ports.Port, publicIPs []api.PublicIP) *api.NetworkInterface {
@@ -42,7 +42,7 @@ func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOp
 	if options.ServerID != nil {
 		serverID = *options.ServerID
 	}
-	p, err := ports.Create(mgr.OpenStack.Network, &ports.CreateOpts{
+	p, err := ports.Create(mgr.Provider.BaseServices.Network, &ports.CreateOpts{
 		NetworkID:      options.NetworkID,
 		Name:           options.Name,
 		Description:    options.Name,
@@ -58,13 +58,13 @@ func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOp
 }
 
 func (mgr *NetworkInterfacesManager) Delete(id string) *api.DeleteNetworkInterfaceError {
-	err := ports.Delete(mgr.OpenStack.Network, id).ExtractErr()
+	err := ports.Delete(mgr.Provider.BaseServices.Network, id).ExtractErr()
 	return api.NewDeleteNetworkInterfaceError(err, id)
 }
 
 func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, *api.GetNetworkInterfaceError) {
-	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
-	p, err := ports.Get(mgr.OpenStack.Network, id).Extract()
+	publicIPs, _ := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
+	p, err := ports.Get(mgr.Provider.BaseServices.Network, id).Extract()
 	if err != nil {
 		return nil, api.NewGetNetworkInterfaceError(err, id)
 	}
@@ -96,8 +96,8 @@ func (mgr *NetworkInterfacesManager) list(options *api.ListNetworkInterfacesOpti
 	if options != nil && options.ServerID != nil {
 		srvID = *options.ServerID
 	}
-	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
-	pages, err := ports.List(mgr.OpenStack.Network, ports.ListOpts{
+	publicIPs, _ := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
+	pages, err := ports.List(mgr.Provider.BaseServices.Network, ports.ListOpts{
 		NetworkID: netID,
 		DeviceID:  srvID,
 	}).AllPages()
@@ -132,11 +132,11 @@ func (mgr *NetworkInterfacesManager) update(options api.UpdateNetworkInterfaceOp
 	if options.SecurityGroupID != nil {
 		opts.SecurityGroups = &[]string{*options.SecurityGroupID}
 	}
-	port, err := ports.Update(mgr.OpenStack.Network, options.ID, opts).Extract()
+	port, err := ports.Update(mgr.Provider.BaseServices.Network, options.ID, opts).Extract()
 	if err != nil {
 		return nil, err
 	}
-	publicIPs, _ := mgr.OpenStack.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
+	publicIPs, _ := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
 	return convert(port, publicIPs), nil
 }
 

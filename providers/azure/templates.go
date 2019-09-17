@@ -19,7 +19,7 @@ func (mgr *ServerTemplateManager) GetVMMeters() ([]commerce.MeterInfo, error) {
 		mgr.Provider.Configuration.Currency,
 		mgr.Provider.Configuration.RegionInfo)
 
-	result, err := mgr.Provider.RateCardClient.Get(context.Background(), filter)
+	result, err := mgr.Provider.BaseServices.RateCardClient.Get(context.Background(), filter)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func GetMeter(vmMeters []commerce.MeterInfo, sizeName string) *commerce.MeterInf
 }
 
 func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
-	list, err := mgr.Provider.VirtualMachineSizesClient.List(context.Background(), mgr.Provider.Configuration.Location)
+	list, err := mgr.Provider.BaseServices.VirtualMachineSizesClient.List(context.Background(), mgr.Provider.Configuration.Location)
 	if err != nil {
 		return nil, api.NewListServerTemplatesError(err)
 	}

@@ -14,8 +14,7 @@ import (
 	"io"
 )
 
-type Provider struct {
-	Configuration              Config
+type BaseServices struct {
 	Authorizer                 autorest.Authorizer
 	VirtualMachineImagesClient compute.VirtualMachineImagesClient
 	VirtualMachineSizesClient  compute.VirtualMachineSizesClient
@@ -26,14 +25,19 @@ type Provider struct {
 	InterfacesClient           network.InterfacesClient
 	RateCardClient             commerce.RateCardClient
 	PublicIPAddressesClient    network.PublicIPAddressesClient
+}
 
-	ImageManager             *ImageManager
-	ServerTemplateManager    *ServerTemplateManager
-	NetworkManager           *NetworkManager
-	SecurityGroupManager     *SecurityGroupManager
-	ServerManager            *ServerManager
-	NetworkInterfacesManager *NetworkInterfacesManager
-	PublicIPAddressManager   *PublicIPManager
+type Provider struct {
+	Configuration Config
+
+	BaseServices             BaseServices
+	ImageManager             ImageManager
+	ServerTemplateManager    ServerTemplateManager
+	NetworkManager           NetworkManager
+	SecurityGroupManager     SecurityGroupManager
+	ServerManager            ServerManager
+	NetworkInterfacesManager NetworkInterfacesManager
+	PublicIPAddressManager   PublicIPManager
 }
 
 type Config struct {
@@ -68,67 +72,67 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
-	p.Authorizer, err = getAuthorizerForResource(&cfg)
+	p.BaseServices.Authorizer, err = getAuthorizerForResource(&cfg)
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
 
-	p.VirtualMachineImagesClient = compute.NewVirtualMachineImagesClient(cfg.SubscriptionID)
-	p.VirtualMachineImagesClient.Authorizer = p.Authorizer
-	err = p.VirtualMachineImagesClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.VirtualMachineImagesClient = compute.NewVirtualMachineImagesClient(cfg.SubscriptionID)
+	p.BaseServices.VirtualMachineImagesClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.VirtualMachineImagesClient.AddToUserAgent(cfg.UserAgent)
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
 
-	p.VirtualMachineSizesClient = compute.NewVirtualMachineSizesClient(cfg.SubscriptionID)
-	p.VirtualMachineSizesClient.Authorizer = p.Authorizer
-	err = p.VirtualMachineSizesClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.VirtualMachineSizesClient = compute.NewVirtualMachineSizesClient(cfg.SubscriptionID)
+	p.BaseServices.VirtualMachineSizesClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.VirtualMachineSizesClient.AddToUserAgent(cfg.UserAgent)
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
 
-	p.VirtualNetworksClient = network.NewVirtualNetworksClient(cfg.SubscriptionID)
-	p.VirtualNetworksClient.Authorizer = p.Authorizer
-	err = p.VirtualNetworksClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.VirtualNetworksClient = network.NewVirtualNetworksClient(cfg.SubscriptionID)
+	p.BaseServices.VirtualNetworksClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.VirtualNetworksClient.AddToUserAgent(cfg.UserAgent)
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
-	p.SubnetsClient = network.NewSubnetsClient(cfg.SubscriptionID)
-	p.SubnetsClient.Authorizer = p.Authorizer
-	err = p.SubnetsClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.SubnetsClient = network.NewSubnetsClient(cfg.SubscriptionID)
+	p.BaseServices.SubnetsClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.SubnetsClient.AddToUserAgent(cfg.UserAgent)
 
-	p.SecurityGroupsClient = network.NewSecurityGroupsClient(cfg.SubscriptionID)
-	p.SecurityGroupsClient.Authorizer = p.Authorizer
-	err = p.SecurityGroupsClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.SecurityGroupsClient = network.NewSecurityGroupsClient(cfg.SubscriptionID)
+	p.BaseServices.SecurityGroupsClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.SecurityGroupsClient.AddToUserAgent(cfg.UserAgent)
 
-	p.VirtualMachinesClient = compute.NewVirtualMachinesClient(cfg.SubscriptionID)
-	p.VirtualMachinesClient.Authorizer = p.Authorizer
-	err = p.VirtualMachinesClient.AddToUserAgent(cfg.UserAgent)
-	if err != nil {
-		return errors.Wrap(err, "error initializing azure provider")
-	}
-
-	p.RateCardClient = commerce.NewRateCardClient(cfg.SubscriptionID)
-	p.RateCardClient.Authorizer = p.Authorizer
-	err = p.RateCardClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.VirtualMachinesClient = compute.NewVirtualMachinesClient(cfg.SubscriptionID)
+	p.BaseServices.VirtualMachinesClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.VirtualMachinesClient.AddToUserAgent(cfg.UserAgent)
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
 
-	p.PublicIPAddressesClient = network.NewPublicIPAddressesClient(cfg.SubscriptionID)
-	p.PublicIPAddressesClient.Authorizer = p.Authorizer
-	err = p.PublicIPAddressesClient.AddToUserAgent(cfg.UserAgent)
+	p.BaseServices.RateCardClient = commerce.NewRateCardClient(cfg.SubscriptionID)
+	p.BaseServices.RateCardClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.RateCardClient.AddToUserAgent(cfg.UserAgent)
 	if err != nil {
 		return errors.Wrap(err, "error initializing azure provider")
 	}
 
-	p.ImageManager = &ImageManager{Provider: p}
-	p.ServerTemplateManager = &ServerTemplateManager{Provider: p}
-	p.NetworkManager = &NetworkManager{Provider: p}
-	p.SecurityGroupManager = &SecurityGroupManager{Provider: p}
-	p.ServerManager = &ServerManager{Provider: p}
-	p.NetworkInterfacesManager = &NetworkInterfacesManager{Provider: p}
-	p.PublicIPAddressManager = &PublicIPManager{Provider: p}
+	p.BaseServices.PublicIPAddressesClient = network.NewPublicIPAddressesClient(cfg.SubscriptionID)
+	p.BaseServices.PublicIPAddressesClient.Authorizer = p.BaseServices.Authorizer
+	err = p.BaseServices.PublicIPAddressesClient.AddToUserAgent(cfg.UserAgent)
+	if err != nil {
+		return errors.Wrap(err, "error initializing azure provider")
+	}
+
+	p.ImageManager = ImageManager{Provider: p}
+	p.ServerTemplateManager = ServerTemplateManager{Provider: p}
+	p.NetworkManager = NetworkManager{Provider: p}
+	p.SecurityGroupManager = SecurityGroupManager{Provider: p}
+	p.ServerManager = ServerManager{Provider: p}
+	p.NetworkInterfacesManager = NetworkInterfacesManager{Provider: p}
+	p.PublicIPAddressManager = PublicIPManager{Provider: p}
 
 	return nil
 }
@@ -156,27 +160,27 @@ func getAuthorizerForResource(config *Config) (autorest.Authorizer, error) {
 }
 
 func (p *Provider) GetNetworkManager() api.NetworkManager {
-	return p.NetworkManager
+	return &p.NetworkManager
 }
 
 func (p *Provider) GetImageManager() api.ImageManager {
-	return p.ImageManager
+	return &p.ImageManager
 }
 
 func (p *Provider) GetTemplateManager() api.ServerTemplateManager {
-	return p.ServerTemplateManager
+	return &p.ServerTemplateManager
 }
 
 func (p *Provider) GetSecurityGroupManager() api.SecurityGroupManager {
-	return p.SecurityGroupManager
+	return &p.SecurityGroupManager
 }
 
 func (p *Provider) GetServerManager() api.ServerManager {
-	return p.ServerManager
+	return &p.ServerManager
 }
 
 func (p *Provider) GetNetworkInterfaceManager() api.NetworkInterfaceManager {
-	return p.NetworkInterfacesManager
+	return &p.NetworkInterfacesManager
 }
 
 func (p *Provider) GetVolumeManager() api.VolumeManager {
@@ -184,5 +188,5 @@ func (p *Provider) GetVolumeManager() api.VolumeManager {
 }
 
 func (p *Provider) GetPublicIPAddressManager() api.PublicIPManager {
-	return p.PublicIPAddressManager
+	return &p.PublicIPAddressManager
 }

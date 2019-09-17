@@ -25,7 +25,7 @@ func (mgr *NetworkInterfacesManager) create(options *api.CreateNetworkInterfaceO
 	if options.ServerID != nil {
 		tags["server-id"] = options.ServerID
 	}
-	future, err := mgr.Provider.InterfacesClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.Interface{
+	future, err := mgr.Provider.BaseServices.InterfacesClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.Interface{
 		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
 			VirtualMachine: subResource,
 			IPConfigurations: &[]network.InterfaceIPConfiguration{
@@ -55,11 +55,11 @@ func (mgr *NetworkInterfacesManager) create(options *api.CreateNetworkInterfaceO
 	if err != nil {
 		return nil, err
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.InterfacesClient.Client)
 	if err != nil {
 		return nil, err
 	}
-	ni, err := future.Result(mgr.Provider.InterfacesClient)
+	ni, err := future.Result(mgr.Provider.BaseServices.InterfacesClient)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +106,11 @@ func convertNetworkInterface(ni *network.Interface) *api.NetworkInterface {
 }
 
 func (mgr *NetworkInterfacesManager) delete(id string) error {
-	future, err := mgr.Provider.InterfacesClient.Delete(context.Background(), mgr.resourceGroup(), id)
+	future, err := mgr.Provider.BaseServices.InterfacesClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return err
 	}
-	return future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
+	return future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.InterfacesClient.Client)
 }
 
 func (mgr *NetworkInterfacesManager) Delete(id string) *api.DeleteNetworkInterfaceError {
@@ -118,7 +118,7 @@ func (mgr *NetworkInterfacesManager) Delete(id string) *api.DeleteNetworkInterfa
 }
 
 func (mgr *NetworkInterfacesManager) get(id string) (*network.Interface, error) {
-	res, err := mgr.Provider.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), id, "")
+	res, err := mgr.Provider.BaseServices.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), id, "")
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func checkNI(ni *api.NetworkInterface, options *api.ListNetworkInterfacesOptions
 }
 
 func (mgr *NetworkInterfacesManager) listAzure(options *api.ListNetworkInterfacesOptions) ([]network.Interface, error) {
-	res, err := mgr.Provider.InterfacesClient.List(context.Background(), mgr.resourceGroup())
+	res, err := mgr.Provider.BaseServices.InterfacesClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (mgr *NetworkInterfacesManager) list(options *api.ListNetworkInterfacesOpti
 }
 
 func (mgr *NetworkInterfacesManager) update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, error) {
-	res, err := mgr.Provider.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), options.ID, "")
+	res, err := mgr.Provider.BaseServices.InterfacesClient.Get(context.Background(), mgr.resourceGroup(), options.ID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -205,11 +205,11 @@ func (mgr *NetworkInterfacesManager) update(options api.UpdateNetworkInterfaceOp
 		res.VirtualMachine = &network.SubResource{ID: options.ServerID}
 	}
 
-	future, err := mgr.Provider.InterfacesClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), *res.Name, res)
+	future, err := mgr.Provider.BaseServices.InterfacesClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), *res.Name, res)
 	if err != nil {
 		return nil, err
 	}
-	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.InterfacesClient.Client)
+	err = future.WaitForCompletionRef(context.Background(), mgr.Provider.BaseServices.InterfacesClient.Client)
 	ni, err := mgr.Get(options.ID)
 	return ni, err
 }

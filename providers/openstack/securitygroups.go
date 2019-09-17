@@ -12,7 +12,7 @@ import (
 
 //SecurityGroupManager defines security group management functions a anyclouds provider must provide
 type SecurityGroupManager struct {
-	OpenStack *Provider
+	Provider *Provider
 }
 
 func group(g *groups.SecGroup) *api.SecurityGroup {
@@ -46,7 +46,7 @@ func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.
 		Description: options.Description,
 	}
 
-	g, err := groups.Create(mgr.OpenStack.Network, createOpts).Extract()
+	g, err := groups.Create(mgr.Provider.BaseServices.Network, createOpts).Extract()
 	if err != nil {
 		return nil, api.NewCreateSecurityGroupError(UnwrapOpenStackError(err), options)
 	}
@@ -56,7 +56,7 @@ func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.
 
 //Delete deletes the Openstack security group identified by id
 func (mgr *SecurityGroupManager) Delete(id string) *api.DeleteSecurityGroupError {
-	err := groups.Delete(mgr.OpenStack.Network, id).ExtractErr()
+	err := groups.Delete(mgr.Provider.BaseServices.Network, id).ExtractErr()
 	if err != nil {
 		return api.NewDeleteSecurityGroupError(UnwrapOpenStackError(err), id)
 	}
@@ -76,7 +76,7 @@ func (mgr *SecurityGroupManager) list(opts groups.ListOpts) ([]api.SecurityGroup
 }
 
 func (mgr *SecurityGroupManager) groups(opts groups.ListOpts) ([]groups.SecGroup, error) {
-	allPages, err := groups.List(mgr.OpenStack.Network, opts).AllPages()
+	allPages, err := groups.List(mgr.Provider.BaseServices.Network, opts).AllPages()
 	if err != nil {
 		return nil, err
 	}
@@ -152,16 +152,16 @@ func checkIPs(subnetID string, ip string, ips []ports.IP) bool {
 
 //Attach a server to a security group
 func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) *api.AttachSecurityGroupError {
-	//srv, err := servers.Get(mgr.OpenStack.Compute, id).Extract()
+	//srv, err := servers.Get(mgr.Provider.Compute, id).Extract()
 	var err error
-	sn, err := mgr.OpenStack.NetworkManager.GetSubnet(options.NetworkID, options.SubnetID)
+	sn, err := mgr.Provider.NetworkManager.GetSubnet(options.NetworkID, options.SubnetID)
 	if err != nil {
 		return api.NewAttachSecurityGroupError(UnwrapOpenStackError(err), options)
 	}
-	pts, err := mgr.OpenStack.PublicIPAddressManager.listPorts(options.ServerID)
+	pts, err := mgr.Provider.PublicIPAddressManager.listPorts(options.ServerID)
 	for _, p := range pts {
 		if p.NetworkID == sn.NetworkID && (options.IPAddress == nil || checkIPs(options.SubnetID, *options.IPAddress, p.FixedIPs)) {
-			ports.Update(mgr.OpenStack.Network, p.ID, ports.UpdateOpts{
+			ports.Update(mgr.Provider.BaseServices.Network, p.ID, ports.UpdateOpts{
 				Name:                &p.Name,
 				Description:         &p.Description,
 				AdminStateUp:        &p.AdminStateUp,
@@ -176,19 +176,19 @@ func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) 
 	return api.NewAttachSecurityGroupError(UnwrapOpenStackError(err), options)
 }
 
-//AddSecurityRule adds a security rule to an OpenStack security group
+//AddSecurityRule adds a security rule to an Provider security group
 func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, *api.AddSecurityRuleError) {
 	opts := ruleOptions(&options)
 	opts.SecGroupID = options.SecurityGroupID
-	r, err := rules.Create(mgr.OpenStack.Network, opts).Extract()
+	r, err := rules.Create(mgr.Provider.BaseServices.Network, opts).Extract()
 	if err != nil {
 		return nil, api.NewAddSecurityRuleError(UnwrapOpenStackError(err), options)
 	}
 	return rule(r), nil
 }
 
-//RemoveSecurityRule deletes a security rule from an OpenStack security group
+//RemoveSecurityRule deletes a security rule from an Provider security group
 func (mgr *SecurityGroupManager) RemoveSecurityRule(groupID, ruleID string) *api.RemoveSecurityRuleError {
-	err := rules.Delete(mgr.OpenStack.Network, ruleID).ExtractErr()
+	err := rules.Delete(mgr.Provider.BaseServices.Network, ruleID).ExtractErr()
 	return api.NewRemoveSecurityRuleError(UnwrapOpenStackError(err), groupID, ruleID)
 }
