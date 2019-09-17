@@ -125,7 +125,7 @@ func (mgr *ServerManager) createOnDemandInstance(options *api.CreateServerOption
 		return nil, errors.Wrap(err, "error creating on demand instance")
 	}
 	if out.Instances == nil || out.Instances[0].InstanceId == nil {
-		return nil, errors.Errorf("unknow error creating reserved instance")
+		return nil, errors.Errorf("unknown error creating reserved instance")
 	}
 	return out.Instances[0].InstanceId, nil
 }
@@ -137,7 +137,7 @@ func (mgr *ServerManager) searchReservedInstanceOffering(options *api.CreateServ
 		return nil, errors.Wrapf(err, "Invalid template ID %s", options.TemplateID)
 	}
 	if tpl == nil {
-		return nil, errors.Errorf("Unknow error getting server template %s", options.TemplateID)
+		return nil, errors.Errorf("unknown error getting server template %s", options.TemplateID)
 	}
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeReservedInstancesOfferings(&ec2.DescribeReservedInstancesOfferingsInput{
 		AvailabilityZone:   aws.String(mgr.Provider.Configuration.Region),
@@ -185,7 +185,7 @@ func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOption
 		return nil, errors.Wrap(err, "Error creating reserved instance")
 	}
 	if out.ReservedInstancesId == nil {
-		return nil, errors.Errorf("Unknow error creating reserved instance")
+		return nil, errors.Errorf("unknown error creating reserved instance")
 	}
 	return out.ReservedInstancesId, nil
 }

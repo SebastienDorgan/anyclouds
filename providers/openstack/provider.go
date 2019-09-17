@@ -46,8 +46,8 @@ type Config struct {
 	TenantID   string
 	TenantName string
 
-	// AllowReauth should be set to true if you grant permission for Gophercloud to
-	// cache your credentials in memory, and to allow Gophercloud to attempt to
+	// AllowReauth should be set to true if you grant permission for anyclouds to
+	// cache your credentials in memory, and to allow anyclouds to attempt to
 	// re-authenticate automatically if/when your token expires.  If you set it to
 	// false, it will not cache these settings, but re-authentication will not be
 	// possible.  This setting defaults to false.

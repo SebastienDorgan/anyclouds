@@ -21,6 +21,7 @@ type CreateNetworkOptions struct {
 //IPVersion ip version enum
 type IPVersion int
 
+//noinspection ALL
 const (
 	//IPVersion6 IPv6
 	IPVersion6 IPVersion = 6
@@ -48,7 +49,7 @@ type Subnet struct {
 	ID string
 	//identifier of the parent network (i.e. Network.ID)
 	NetworkID string
-	//name of the sub networkn
+	//name of the sub network
 	Name string
 	//CIDR of the sub network
 	CIDR string

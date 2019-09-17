@@ -75,7 +75,7 @@ type SecurityGroupOptions struct {
 	NetworkID   string
 }
 
-//AttachSecurityGroupOptions options that can be used to attach a security group to a network inteface
+//AttachSecurityGroupOptions options that can be used to attach a security group to a network interface
 type AttachSecurityGroupOptions struct {
 	SecurityGroupID string
 	ServerID        string

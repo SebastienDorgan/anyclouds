@@ -8,29 +8,29 @@ import (
 	"testing"
 )
 
-func imageErrorWithCausef() error {
+func imageErrorWithCause() error {
 	return api.NewGetImageError(fmt.Errorf("terrible error"), "i-4545644")
 }
 
-func sprt(s string) *string {
+func sptr(s string) *string {
 	return &s
 }
 
 func TestErrors(t *testing.T) {
-	err := imageErrorWithCausef()
+	err := imageErrorWithCause()
 	assert.Error(t, err)
 	err = api.NewCreateNetworkInterfaceError(err, api.CreateNetworkInterfaceOptions{
 		Name:             "a name",
 		NetworkID:        "1234",
 		SubnetID:         "sn-456",
-		ServerID:         sprt("srv-678"),
+		ServerID:         sptr("srv-678"),
 		SecurityGroupID:  "",
 		Primary:          false,
 		PrivateIPAddress: nil,
 	})
 
 	err = api.NewUpdateNetworkInterfaceError(err, api.UpdateNetworkInterfaceOptions{
-		ServerID:        sprt("srv-6789"),
+		ServerID:        sptr("srv-6789"),
 		SecurityGroupID: nil,
 	})
 

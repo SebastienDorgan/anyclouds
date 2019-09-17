@@ -22,8 +22,8 @@ func weight(tpl api.ServerTemplate) float64 {
 	return float64(tpl.RAMSize)
 }
 
-func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network *api.Network, subnet *api.Subnet, err error) {
-	network, err = netm.CreateNetwork(api.CreateNetworkOptions{
+func (s *ServerManagerTestSuite) CreateNetwork(mgr api.NetworkManager) (network *api.Network, subnet *api.Subnet, err error) {
+	network, err = mgr.CreateNetwork(api.CreateNetworkOptions{
 		CIDR: "10.0.0.0/16",
 		Name: "Test Network",
 	})
@@ -31,7 +31,7 @@ func (s *ServerManagerTestSuite) CreateNetwork(netm api.NetworkManager) (network
 		return nil, nil, err
 	}
 
-	subnet, err = netm.CreateSubnet(api.CreateSubnetOptions{
+	subnet, err = mgr.CreateSubnet(api.CreateSubnetOptions{
 		NetworkID: network.ID,
 		Name:      "Test subnet",
 		CIDR:      "10.0.0.0/24",
@@ -58,7 +58,7 @@ func (s *ServerManagerTestSuite) CreateSecurityGroup(sgm api.SecurityGroupManage
 		PortRange:       api.PortRange{From: 22, To: 22},
 		Protocol:        api.ProtocolTCP,
 		CIDR:            "0.0.0.0/0",
-		Description:     "Grant ingress ssh trafic",
+		Description:     "Grant ingress ssh traffic",
 	})
 	_, _ = sgm.AddSecurityRule(api.AddSecurityRuleOptions{
 		SecurityGroupID: sg.ID,
@@ -77,12 +77,12 @@ func (s *ServerManagerTestSuite) SelectTemplate(tpm api.ServerTemplateManager) (
 	cpu := 4
 	ram := 15000
 	tplMgr := s.Prov.GetTemplateManager()
-	tpls, err := tplMgr.List()
+	templates, err := tplMgr.List()
 	if err != nil {
 		return nil, err
 	}
-	indexes := talgo.FindAll(len(tpls), func(i int) bool {
-		if tpls[i].NumberOfCPUCore == cpu && tpls[i].RAMSize >= ram && tpls[i].GPUInfo == nil && tpls[i].Arch == api.ArchAmd64 {
+	indexes := talgo.FindAll(len(templates), func(i int) bool {
+		if templates[i].NumberOfCPUCore == cpu && templates[i].RAMSize >= ram && templates[i].GPUInfo == nil && templates[i].Arch == api.ArchAmd64 {
 			return true
 		}
 		return false
@@ -91,12 +91,12 @@ func (s *ServerManagerTestSuite) SelectTemplate(tpm api.ServerTemplateManager) (
 		return nil, errors.Errorf("No matching template find")
 	}
 	selected := talgo.Select(len(indexes), func(i, j int) int {
-		if weight(tpls[indexes[i]]) < weight(tpls[indexes[j]]) {
+		if weight(templates[indexes[i]]) < weight(templates[indexes[j]]) {
 			return i
 		}
 		return j
 	})
-	return &tpls[indexes[selected]], nil
+	return &templates[indexes[selected]], nil
 }
 
 func CheckImageName(img *api.Image, os, version string) bool {
@@ -105,13 +105,13 @@ func CheckImageName(img *api.Image, os, version string) bool {
 }
 
 func (s *ServerManagerTestSuite) FindImage(imm api.ImageManager, tpl *api.ServerTemplate) (*api.Image, error) {
-	imgs, err := imm.List()
+	images, err := imm.List()
 	if err != nil {
 		return nil, err
 	}
 	os := "UBUNTU"
 	version := "18.04"
-	for _, img := range imgs {
+	for _, img := range images {
 		if img.MinDisk < tpl.SystemDiskSize && img.MinRAM < tpl.RAMSize && CheckImageName(&img, os, version) {
 			return &img, err
 		}
@@ -124,8 +124,8 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
 
-	netm := s.Prov.GetNetworkManager()
-	net, subnet, err := s.CreateNetwork(netm)
+	mgr := s.Prov.GetNetworkManager()
+	net, subnet, err := s.CreateNetwork(mgr)
 	assert.NoError(s.T(), err)
 
 	sgm := s.Prov.GetSecurityGroupManager()
@@ -179,9 +179,9 @@ func (s *ServerManagerTestSuite) TestServerManagerOnDemandInstance() {
 	assert.NoError(s.T(), err)
 	err = sgm.Delete(sg.ID)
 	assert.NoError(s.T(), err)
-	err = netm.DeleteSubnet(net.ID, subnet.ID)
+	err = mgr.DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(s.T(), err)
-	err = netm.DeleteNetwork(net.ID)
+	err = mgr.DeleteNetwork(net.ID)
 	assert.NoError(s.T(), err)
 }
 
@@ -190,8 +190,8 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	kp, err := sshutils.CreateKeyPair(4096)
 	assert.NoError(s.T(), err)
 
-	netm := s.Prov.GetNetworkManager()
-	net, subnet, err := s.CreateNetwork(netm)
+	mgr := s.Prov.GetNetworkManager()
+	net, subnet, err := s.CreateNetwork(mgr)
 	assert.NoError(s.T(), err)
 
 	sgm := s.Prov.GetSecurityGroupManager()
@@ -269,8 +269,8 @@ func (s *ServerManagerTestSuite) TestServerManagerSpotInstance() {
 	assert.NoError(s.T(), err)
 	err = s.Prov.GetPublicIPAddressManager().Delete(publicIP.ID)
 	assert.NoError(s.T(), err)
-	err = netm.DeleteSubnet(net.ID, subnet.ID)
+	err = mgr.DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(s.T(), err)
-	err = netm.DeleteNetwork(net.ID)
+	err = mgr.DeleteNetwork(net.ID)
 	assert.NoError(s.T(), err)
 }

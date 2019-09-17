@@ -14,12 +14,12 @@ type PublicIPManager struct {
 }
 
 func (mgr *PublicIPManager) ListAvailablePools() ([]api.PublicIPPool, *api.ListAvailablePublicIPPoolsError) {
-	snets, err := mgr.OpenStack.GetNetworkManager().ListSubnets(mgr.OpenStack.ExternalNetworkID)
+	subnets, err := mgr.OpenStack.GetNetworkManager().ListSubnets(mgr.OpenStack.ExternalNetworkID)
 	if err != nil {
 		return nil, api.NewListAvailablePublicIPPoolsError(UnwrapOpenStackError(err))
 	}
 	var pools []api.PublicIPPool
-	for _, sn := range snets {
+	for _, sn := range subnets {
 		if sn.IPVersion == api.IPVersion6 {
 			continue
 		}
@@ -131,7 +131,7 @@ func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) *api
 				return portList[selectedPorts[i]].FixedIPs[j].IPAddress == options.PrivateIP
 			})
 		})
-		// get index of the orignal portList
+		// get index of the original portList
 		for i := 0; i < len(selection); i++ {
 			selection[i] = selectedPorts[selection[i]]
 		}

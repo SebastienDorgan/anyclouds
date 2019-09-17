@@ -254,7 +254,7 @@ func (mgr *VolumeManager) attachment(volumeID string, serverID string) (*api.Vol
 
 //ListAttachments returns all the attachments of an Server
 func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
-	var atts []api.VolumeAttachment
+	var attachments []api.VolumeAttachment
 	volumes, err := mgr.List()
 	if err != nil {
 		return nil, api.NewListVolumeAttachmentsError(err, serverID)
@@ -262,10 +262,10 @@ func (mgr *VolumeManager) ListAttachments(serverID string) ([]api.VolumeAttachme
 	for _, v := range volumes {
 		att, _ := mgr.attachment(v.ID, serverID)
 		if att != nil {
-			atts = append(atts, *att)
+			attachments = append(attachments, *att)
 		}
 	}
-	return atts, nil
+	return attachments, nil
 }
 
 func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, *api.ResizeVolumeError) {

@@ -5,6 +5,7 @@ import "time"
 //CPUArch enum defining CPU Architectures
 type CPUArch string
 
+//noinspection ALL
 const (
 	//Arch386 x86 32 bits architecture
 	Arch386 CPUArch = "386"

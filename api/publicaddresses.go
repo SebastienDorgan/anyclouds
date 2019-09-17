@@ -16,7 +16,7 @@ type CreatePublicIPOptions struct {
 	IPAddressPoolID *string
 }
 
-//AssociatePublicIPOptions options that can be used to associate a public ip adress to a server
+//AssociatePublicIPOptions options that can be used to associate a public ip address to a server
 type AssociatePublicIPOptions struct {
 	PublicIPId string
 	ServerID   string
@@ -27,7 +27,7 @@ type AssociatePublicIPOptions struct {
 	PrivateIP string
 }
 
-//AddressRange a contigues range of address
+//AddressRange a contiguous range of address
 type AddressRange struct {
 	FirstAddress string
 	LastAddress  string
@@ -44,7 +44,7 @@ type ListPublicIPsOptions struct {
 	ServerID *string
 }
 
-//PublicIPManager an interface providing an abastraction to manipulate public ip addresses
+//PublicIPManager an interface providing an abstraction to manipulate public ip addresses
 type PublicIPManager interface {
 	ListAvailablePools() ([]PublicIPPool, *ListAvailablePublicIPPoolsError)
 	List(options *ListPublicIPsOptions) ([]PublicIP, *ListPublicIPsError)

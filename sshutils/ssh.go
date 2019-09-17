@@ -43,9 +43,9 @@ type KeyPair struct {
 	PrivateKey []byte
 }
 
-// CreateKeyPair creates a key pair using bitsize bits
-func CreateKeyPair(bitsize int) (pair *KeyPair, err error) {
-	privateKey, _ := rsa.GenerateKey(rand.Reader, bitsize)
+// CreateKeyPair creates a key pair using size bits
+func CreateKeyPair(size int) (pair *KeyPair, err error) {
+	privateKey, _ := rsa.GenerateKey(rand.Reader, size)
 	publicKey := privateKey.PublicKey
 	pub, err := ssh.NewPublicKey(&publicKey)
 	if err != nil {

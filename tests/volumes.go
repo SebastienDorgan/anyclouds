@@ -18,12 +18,12 @@ func (s *VolumeManagerTestSuite) SelectTemplate() (*api.ServerTemplate, error) {
 	cpu := 4
 	ram := 15000
 	tplMgr := s.Prov.GetTemplateManager()
-	tpls, err := tplMgr.List()
+	templates, err := tplMgr.List()
 	if err != nil {
 		return nil, err
 	}
-	indexes := talgo.FindAll(len(tpls), func(i int) bool {
-		if tpls[i].NumberOfCPUCore == cpu && tpls[i].RAMSize >= ram && tpls[i].GPUInfo == nil && tpls[i].Arch == api.ArchAmd64 {
+	indexes := talgo.FindAll(len(templates), func(i int) bool {
+		if templates[i].NumberOfCPUCore == cpu && templates[i].RAMSize >= ram && templates[i].GPUInfo == nil && templates[i].Arch == api.ArchAmd64 {
 			return true
 		}
 		return false
@@ -32,22 +32,22 @@ func (s *VolumeManagerTestSuite) SelectTemplate() (*api.ServerTemplate, error) {
 		return nil, errors.Errorf("No matching template find")
 	}
 	selected := talgo.Select(len(indexes), func(i, j int) int {
-		if tpls[indexes[i]].OneDemandPrice < tpls[indexes[j]].OneDemandPrice {
+		if templates[indexes[i]].OneDemandPrice < templates[indexes[j]].OneDemandPrice {
 			return i
 		}
 		return j
 	})
-	return &tpls[indexes[selected]], nil
+	return &templates[indexes[selected]], nil
 }
 
 func (s *VolumeManagerTestSuite) FindImage(tpl *api.ServerTemplate) (*api.Image, error) {
-	imgs, err := s.Prov.GetImageManager().List()
+	images, err := s.Prov.GetImageManager().List()
 	if err != nil {
 		return nil, err
 	}
 	os := "UBUNTU"
 	version := "18.04"
-	for _, img := range imgs {
+	for _, img := range images {
 		if img.MinDisk < tpl.SystemDiskSize && img.MinRAM < tpl.RAMSize && CheckImageName(&img, os, version) {
 			return &img, err
 		}
@@ -122,7 +122,7 @@ func (s *VolumeManagerTestSuite) TestVolumeManager() {
 		PortRange:       api.PortRange{From: 22, To: 22},
 		Protocol:        api.ProtocolTCP,
 		CIDR:            "0.0.0.0/0",
-		Description:     "grant ssh acces",
+		Description:     "grant ssh access",
 	})
 	assert.NoError(s.T(), err)
 

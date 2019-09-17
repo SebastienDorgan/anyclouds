@@ -135,9 +135,9 @@ func (p *Provider) Init(config io.Reader, format string) error {
 
 func getAuthorizerForResource(config *Config) (autorest.Authorizer, error) {
 	if config.UseDeviceFlow {
-		deviceconfig := auth.NewDeviceFlowConfig(config.ClientID, config.TenantID)
-		deviceconfig.Resource = config.ResourceManagerEndpoint
-		return deviceconfig.Authorizer()
+		deviceFlowConfig := auth.NewDeviceFlowConfig(config.ClientID, config.TenantID)
+		deviceFlowConfig.Resource = config.ResourceManagerEndpoint
+		return deviceFlowConfig.Authorizer()
 
 	}
 	oauthConfig, err := adal.NewOAuthConfig(

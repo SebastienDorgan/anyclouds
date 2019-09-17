@@ -19,7 +19,7 @@ type PublicIPManager struct {
 
 //PoolProperty property of azure public address pool
 type PoolProperty struct {
-	ChangeNumer     int32    `json:"changeNumber,omitempty"`
+	ChangeNumber    int32    `json:"changeNumber,omitempty"`
 	Region          string   `json:"region,omitempty"`
 	Platform        string   `json:"platform,omitempty"`
 	SystemService   string   `json:"systemService,omitempty"`
@@ -35,9 +35,9 @@ type AddressPool struct {
 
 //PublicAddressPools azure public address pools
 type PublicAddressPools struct {
-	ChangeNumer int32         `json:"changeNumber,omitempty"`
-	Cloud       string        `json:"cloud,omitempty"`
-	Values      []AddressPool `json:"values,omitempty"`
+	ChangeNumber int32         `json:"changeNumber,omitempty"`
+	Cloud        string        `json:"cloud,omitempty"`
+	Values       []AddressPool `json:"values,omitempty"`
 }
 
 func (mgr *PublicIPManager) getPublicAddressPools(url string) ([]AddressPool, error) {
@@ -197,7 +197,7 @@ func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) *api
 		}
 	}
 	if ipConf == nil || niToUpdate == nil {
-		err = errors.Errorf("unable to find network inferface of server %s using private address %s", options.ServerID, options.PrivateIP)
+		err = errors.Errorf("unable to find network interface of server %s using private address %s", options.ServerID, options.PrivateIP)
 		return api.NewAssociatePublicIPError(err, options)
 	}
 	addr, err := mgr.get(options.PublicIPId)

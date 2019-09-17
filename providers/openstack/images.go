@@ -66,8 +66,6 @@ func (mgr *ImageManager) get(id string) (*api.Image, error) {
 	}
 	createdAt, _ := time.Parse(time.RFC3339, ni.Image["created"].(string))
 	updatedAt, _ := time.Parse(time.RFC3339, ni.Image["updated"].(string))
-	//minDisk, _ := strconv.Atoi(ni.Image["minDisk"].(string))
-	//minRam, _ := strconv.Atoi(ni.Image["minRam"].(string))
 	return &api.Image{
 		ID:        ni.Image["id"].(string),
 		Name:      ni.Image["name"].(string),

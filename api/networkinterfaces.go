@@ -40,7 +40,7 @@ type ListNetworkInterfacesOptions struct {
 	PrivateIPAddress *string
 }
 
-//NetworkInterfaceManager an interface providing an abastraction to manipulate network interface cards
+//NetworkInterfaceManager an interface providing an abstraction to manipulate network interface cards
 type NetworkInterfaceManager interface {
 	Create(options CreateNetworkInterfaceOptions) (*NetworkInterface, *CreateNetworkInterfaceError)
 	Delete(id string) *DeleteNetworkInterfaceError

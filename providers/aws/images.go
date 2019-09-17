@@ -61,28 +61,28 @@ func (mgr *ImageManager) search(owner string, name string) ([]api.Image, error) 
 }
 
 func (mgr *ImageManager) list() ([]api.Image, error) {
-	imgsUbuntu, err := mgr.search("099720109477", "ubuntu/images/hvm-ssd/ubuntu-*-*-*-*-????????")
+	ubuntuImages, err := mgr.search("099720109477", "ubuntu/images/hvm-ssd/ubuntu-*-*-*-*-????????")
 	if err != nil {
 		return nil, err
 	}
-	imgsRHEL, err := mgr.search("309956199498", "RHEL-?.?_HVM_GA*")
+	RHELSImages, err := mgr.search("309956199498", "RHEL-?.?_HVM_GA*")
 	if err != nil {
 		return nil, err
 	}
-	imgsDebian, err := mgr.search("379101102735", "debian-*")
+	debianImages, err := mgr.search("379101102735", "debian-*")
 	if err != nil {
 		return nil, err
 	}
-	imgsCentOS, err := mgr.search("410186602215", "CentOS*")
+	centosImages, err := mgr.search("410186602215", "CentOS*")
 	if err != nil {
 		return nil, err
 	}
 
 	var result []api.Image
-	result = append(result, imgsUbuntu...)
-	result = append(result, imgsRHEL...)
-	result = append(result, imgsDebian...)
-	result = append(result, imgsCentOS...)
+	result = append(result, ubuntuImages...)
+	result = append(result, RHELSImages...)
+	result = append(result, debianImages...)
+	result = append(result, centosImages...)
 	return result, nil
 }
 

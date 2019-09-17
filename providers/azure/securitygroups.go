@@ -91,18 +91,18 @@ func convertPortRange(sourcePortRange *string) *api.PortRange {
 	}
 	tokens := strings.Split(*sourcePortRange, "-")
 	if len(tokens) == 1 {
-		from, _ := strconv.Atoi(tokens[0])
+		last, _ := strconv.Atoi(tokens[0])
 		return &api.PortRange{
-			From: from,
+			From: last,
 			To:   math.MaxUint16,
 		}
 	}
 	if len(tokens) == 2 {
-		rfrom, _ := strconv.Atoi(tokens[0])
-		rto, _ := strconv.Atoi(tokens[1])
+		first, _ := strconv.Atoi(tokens[0])
+		last, _ := strconv.Atoi(tokens[1])
 		return &api.PortRange{
-			From: rfrom,
-			To:   rto,
+			From: first,
+			To:   last,
 		}
 	}
 

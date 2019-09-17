@@ -64,17 +64,17 @@ func TestPublicAddresses(t *testing.T) {
 		Description:     "grant icmp access",
 	})
 	assert.NoError(t, err)
-	snet, err := prov.GetNetworkManager().CreateSubnet(api.CreateSubnetOptions{
+	subnet, err := prov.GetNetworkManager().CreateSubnet(api.CreateSubnetOptions{
 		NetworkID: net.ID,
 		Name:      "test_subnet",
 		CIDR:      "10.0.0.0/24",
 		IPVersion: api.IPVersion4,
 	})
 	assert.NoError(t, err)
-	tpls, err := prov.GetTemplateManager().List()
+	templates, err := prov.GetTemplateManager().List()
 	assert.NoError(t, err)
-	sort.Slice(tpls, func(i, j int) bool {
-		return tpls[i].OneDemandPrice < tpls[j].OneDemandPrice
+	sort.Slice(templates, func(i, j int) bool {
+		return templates[i].OneDemandPrice < templates[j].OneDemandPrice
 	})
 	images, err := prov.GetImageManager().List()
 	assert.NoError(t, err)
@@ -92,10 +92,10 @@ func TestPublicAddresses(t *testing.T) {
 
 	srv, err := prov.GetServerManager().Create(api.CreateServerOptions{
 		Name:                 "test_server",
-		TemplateID:           tpls[0].ID,
+		TemplateID:           templates[0].ID,
 		ImageID:              images[selection[n]].ID,
 		DefaultSecurityGroup: sg.ID,
-		Subnets:              []api.Subnet{*snet},
+		Subnets:              []api.Subnet{*subnet},
 		BootstrapScript:      nil,
 		KeyPair:              *kp,
 	})
@@ -115,7 +115,7 @@ func TestPublicAddresses(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	err = prov.GetNetworkManager().DeleteSubnet(net.ID, snet.ID)
+	err = prov.GetNetworkManager().DeleteSubnet(net.ID, subnet.ID)
 	assert.NoError(t, err)
 	err = prov.GetSecurityGroupManager().Delete(sg.ID)
 	assert.NoError(t, err)

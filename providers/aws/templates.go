@@ -142,7 +142,7 @@ func toTemplate(price aws.JSONValue) *api.ServerTemplate {
 	instanceName := gjson.GetBytes(js, "product.attributes.instanceType").String()
 	creationDate, _ := time.Parse(time.RFC3339, gjson.GetBytes(js, "publicationDate").String())
 	tpl := &api.ServerTemplate{
-		ID:                instanceName, //gjson.GetBytes(js, "product.sku").String(),
+		ID:                instanceName, //
 		Name:              instanceName,
 		NumberOfCPUCore:   int(gjson.GetBytes(js, "product.attributes.vcpu").Int()),
 		RAMSize:           decodeMemory(gjson.GetBytes(js, "product.attributes.memory").String()),
@@ -187,10 +187,6 @@ func toTemplate(price aws.JSONValue) *api.ServerTemplate {
 	} else {
 		return nil
 	}
-
-	//filename = fmt.Sprintf("%s_tpl.json", instanceName)
-	//js, _ = json.Marshal(tpl)
-	//_ = ioutil.WriteFile(filename, js, 0644)
 
 	return tpl
 }

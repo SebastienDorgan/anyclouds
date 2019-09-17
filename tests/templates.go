@@ -15,12 +15,12 @@ type TemplateManagerTestSuite struct {
 	Mgr api.ServerTemplateManager
 }
 
-func checkDouble(tpls []api.ServerTemplate) bool {
-	size := len(tpls)
+func checkDouble(templates []api.ServerTemplate) bool {
+	size := len(templates)
 	n := talgo.FindFirst(size, func(i int) bool {
-		tail := tpls[i+1 : size]
+		tail := templates[i+1 : size]
 		n := talgo.FindFirst(len(tail), func(j int) bool {
-			return tail[j].ID == tpls[i].ID
+			return tail[j].ID == templates[i].ID
 		})
 		return n < len(tail) && n > 0
 	})
