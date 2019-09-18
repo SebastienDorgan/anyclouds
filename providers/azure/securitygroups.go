@@ -21,7 +21,7 @@ func (mgr *SecurityGroupManager) resourceGroup() string {
 	return mgr.Provider.Configuration.ResourceGroupName
 }
 
-func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, *api.CreateSecurityGroupError) {
+func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.SecurityGroup, api.CreateSecurityGroupError) {
 	tags := make(map[string]*string, 1)
 	tags["networkID"] = &options.NetworkID
 	future, err := mgr.Provider.BaseServices.SecurityGroupsClient.CreateOrUpdate(context.Background(), mgr.resourceGroup(), options.Name, network.SecurityGroup{
@@ -47,7 +47,7 @@ func (mgr *SecurityGroupManager) Create(options api.SecurityGroupOptions) (*api.
 	}, nil
 }
 
-func (mgr *SecurityGroupManager) Delete(id string) *api.DeleteSecurityGroupError {
+func (mgr *SecurityGroupManager) Delete(id string) api.DeleteSecurityGroupError {
 	future, err := mgr.Provider.BaseServices.SecurityGroupsClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewDeleteSecurityGroupError(err, id)
@@ -139,7 +139,7 @@ func extractRules(sg *network.SecurityGroup) []api.SecurityRule {
 	return rules
 }
 
-func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, *api.ListSecurityGroupsError) {
+func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, api.ListSecurityGroupsError) {
 	res, err := mgr.Provider.BaseServices.SecurityGroupsClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, api.NewListSecurityGroupsError(err)
@@ -157,7 +157,7 @@ func (mgr *SecurityGroupManager) List() ([]api.SecurityGroup, *api.ListSecurityG
 	return sgs, nil
 }
 
-func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, *api.GetSecurityGroupError) {
+func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, api.GetSecurityGroupError) {
 	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), id, "")
 	if err != nil {
 		return nil, api.NewGetSecurityGroupError(err, id)
@@ -171,7 +171,7 @@ func (mgr *SecurityGroupManager) Get(id string) (*api.SecurityGroup, *api.GetSec
 	}, nil
 }
 
-func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) *api.AttachSecurityGroupError {
+func (mgr *SecurityGroupManager) Attach(options api.AttachSecurityGroupOptions) api.AttachSecurityGroupError {
 	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return api.NewAttachSecurityGroupError(err, options)
@@ -258,7 +258,7 @@ func azSecurityRule(rule *api.AddSecurityRuleOptions) *network.SecurityRule {
 	}
 }
 
-func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, *api.AddSecurityRuleError) {
+func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOptions) (*api.SecurityRule, api.AddSecurityRuleError) {
 	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), options.SecurityGroupID, "")
 	if err != nil {
 		return nil, api.NewAddSecurityRuleError(err, options)
@@ -290,7 +290,7 @@ func (mgr *SecurityGroupManager) AddSecurityRule(options api.AddSecurityRuleOpti
 	return nil, api.NewAddSecurityRuleError(err, options)
 }
 
-func (mgr *SecurityGroupManager) RemoveSecurityRule(groupID, ruleID string) *api.RemoveSecurityRuleError {
+func (mgr *SecurityGroupManager) RemoveSecurityRule(groupID, ruleID string) api.RemoveSecurityRuleError {
 	sg, err := mgr.Provider.BaseServices.SecurityGroupsClient.Get(context.Background(), mgr.resourceGroup(), groupID, "")
 	if err != nil {
 		return api.NewRemoveSecurityRuleError(err, groupID, ruleID)

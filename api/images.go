@@ -22,32 +22,32 @@ type Image struct {
 
 //ImageManager defines image management functions a anyclouds provider must provide
 type ImageManager interface {
-	List() ([]Image, *ListImageError)
-	Get(id string) (*Image, *GetImageError)
+	List() ([]Image, ListImageError)
+	Get(id string) (*Image, GetImageError)
 }
 
 //ListImageError list image error type
-type ListImageError struct {
-	ErrorStack
+type ListImageError interface {
+	Error() string
 }
 
 //NewListImageError create a new ListImageError
-func NewListImageError(cause error) *ListImageError {
+func NewListImageError(cause error) ListImageError {
 	if cause == nil {
 		return nil
 	}
-	return &ListImageError{*NewErrorStack(cause, "error listing images")}
+	return NewErrorStack(cause, "error listing images")
 }
 
 //GetImageError get image error type
-type GetImageError struct {
-	ErrorStack
+type GetImageError interface {
+	Error() string
 }
 
 //NewGetImageError create a new GetImageError
-func NewGetImageError(cause error, imageID string) *GetImageError {
+func NewGetImageError(cause error, imageID string) GetImageError {
 	if cause == nil {
 		return nil
 	}
-	return &GetImageError{*NewErrorStack(cause, "error getting image", imageID)}
+	return NewErrorStack(cause, "error getting image", imageID)
 }

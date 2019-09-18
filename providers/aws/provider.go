@@ -126,6 +126,7 @@ func (p *Provider) Init(config io.Reader, format string) error {
 	p.Configuration.Region = cfg.Region
 	p.Configuration.RegionName = v.GetString("RegionName")
 	p.Configuration.AvailabilityZone = v.GetString("AvailabilityZone")
+
 	return nil
 
 }

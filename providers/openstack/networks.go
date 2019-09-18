@@ -15,7 +15,7 @@ type NetworkManager struct {
 }
 
 //CreateNetwork creates a network
-func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api.Network, *api.CreateNetworkError) {
+func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api.Network, api.CreateNetworkError) {
 	up := true
 	opts := networks.CreateOpts{
 		AdminStateUp: &up,
@@ -40,7 +40,7 @@ func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api
 }
 
 //DeleteNetwork deletes the network identified by id
-func (mgr *NetworkManager) DeleteNetwork(id string) *api.DeleteNetworkError {
+func (mgr *NetworkManager) DeleteNetwork(id string) api.DeleteNetworkError {
 	r, err := mgr.findRouter(id)
 	if err != nil {
 		return api.NewDeleteNetworkError(err, id)
@@ -68,7 +68,7 @@ func network(net *networks.Network) *api.Network {
 }
 
 //ListNetworks lists networks
-func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError) {
+func (mgr *NetworkManager) ListNetworks() ([]api.Network, api.ListNetworksError) {
 	opts := networks.ListOpts{}
 	page, err := networks.List(mgr.Refactor.BaseServices.Network, opts).AllPages()
 	if err != nil {
@@ -86,7 +86,7 @@ func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError
 }
 
 //GetNetwork returns the configuration of the network identified by id
-func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, *api.GetNetworkError) {
+func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, api.GetNetworkError) {
 	n, err := networks.Get(mgr.Refactor.BaseServices.Network, id).Extract()
 	if err != nil {
 		return nil, api.NewGetNetworkError(err, id)
@@ -149,7 +149,7 @@ func (mgr *NetworkManager) findRouter(name string) (*routers.Router, error) {
 }
 
 //CreateSubnet creates a subnet
-func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.Subnet, *api.CreateSubnetError) {
+func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.Subnet, api.CreateSubnetError) {
 	dhcp := true
 	opts := subnets.CreateOpts{
 		NetworkID:  options.NetworkID,
@@ -185,13 +185,13 @@ func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.S
 }
 
 //DeleteSubnet deletes the subnet identified by id
-func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) *api.DeleteSubnetError {
+func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) api.DeleteSubnetError {
 	err := subnets.Delete(mgr.Refactor.BaseServices.Network, subnetID).ExtractErr()
 	return api.NewDeleteSubnetError(UnwrapOpenStackError(err), networkID, subnetID)
 }
 
 //ListSubnets lists the subnet
-func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.ListSubnetsError) {
+func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, api.ListSubnetsError) {
 	page, err := subnets.List(mgr.Refactor.BaseServices.Network, subnets.ListOpts{
 		NetworkID: networkID,
 	}).AllPages()
@@ -240,7 +240,7 @@ func (mgr *NetworkManager) listAllSubnets() ([]api.Subnet, error) {
 }
 
 //GetSubnet returns the configuration of the subnet identified by id
-func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, *api.GetSubnetError) {
+func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, api.GetSubnetError) {
 	sn, err := subnets.Get(mgr.Refactor.BaseServices.Network, subnetID).Extract()
 	if err != nil {
 		return nil, api.NewGetSubnetError(UnwrapOpenStackError(err), networkID, subnetID)

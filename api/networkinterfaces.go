@@ -42,74 +42,74 @@ type ListNetworkInterfacesOptions struct {
 
 //NetworkInterfaceManager an interface providing an abstraction to manipulate network interface cards
 type NetworkInterfaceManager interface {
-	Create(options CreateNetworkInterfaceOptions) (*NetworkInterface, *CreateNetworkInterfaceError)
-	Delete(id string) *DeleteNetworkInterfaceError
-	Get(id string) (*NetworkInterface, *GetNetworkInterfaceError)
-	List(options *ListNetworkInterfacesOptions) ([]NetworkInterface, *ListNetworkInterfacesError)
-	Update(options UpdateNetworkInterfaceOptions) (*NetworkInterface, *UpdateNetworkInterfaceError)
+	Create(options CreateNetworkInterfaceOptions) (*NetworkInterface, CreateNetworkInterfaceError)
+	Delete(id string) DeleteNetworkInterfaceError
+	Get(id string) (*NetworkInterface, GetNetworkInterfaceError)
+	List(options *ListNetworkInterfacesOptions) ([]NetworkInterface, ListNetworkInterfacesError)
+	Update(options UpdateNetworkInterfaceOptions) (*NetworkInterface, UpdateNetworkInterfaceError)
 }
 
 //CreateNetworkInterfaceError create network interface error type
-type CreateNetworkInterfaceError struct {
-	ErrorStack
+type CreateNetworkInterfaceError interface {
+	Error() string
 }
 
 //NewCreateNetworkInterfaceError create a new CreateNetworkInterfaceError
-func NewCreateNetworkInterfaceError(cause error, options CreateNetworkInterfaceOptions) *CreateNetworkInterfaceError {
+func NewCreateNetworkInterfaceError(cause error, options CreateNetworkInterfaceOptions) CreateNetworkInterfaceError {
 	if cause == nil {
 		return nil
 	}
-	return &CreateNetworkInterfaceError{*NewErrorStack(cause, "error creating network interface", options)}
+	return NewErrorStack(cause, "error creating network interface", options)
 }
 
 //DeleteNetworkInterfaceError delete network interface error type
-type DeleteNetworkInterfaceError struct {
-	ErrorStack
+type DeleteNetworkInterfaceError interface {
+	Error() string
 }
 
 //NewDeleteNetworkInterfaceError create a new DeleteNetworkInterfaceError
-func NewDeleteNetworkInterfaceError(cause error, id string) *DeleteNetworkInterfaceError {
+func NewDeleteNetworkInterfaceError(cause error, id string) DeleteNetworkInterfaceError {
 	if cause == nil {
 		return nil
 	}
-	return &DeleteNetworkInterfaceError{*NewErrorStack(cause, "error deleting network interface", id)}
+	return NewErrorStack(cause, "error deleting network interface", id)
 }
 
 //GetNetworkInterfaceError get network interface error type
-type GetNetworkInterfaceError struct {
-	ErrorStack
+type GetNetworkInterfaceError interface {
+	Error() string
 }
 
 //NewGetNetworkInterfaceError create a new GetNetworkInterfaceError
-func NewGetNetworkInterfaceError(cause error, id string) *GetNetworkInterfaceError {
+func NewGetNetworkInterfaceError(cause error, id string) GetNetworkInterfaceError {
 	if cause == nil {
 		return nil
 	}
-	return &GetNetworkInterfaceError{*NewErrorStack(cause, "error getting network interface", id)}
+	return NewErrorStack(cause, "error getting network interface", id)
 }
 
 //ListNetworkInterfacesError list network interface error type
-type ListNetworkInterfacesError struct {
-	ErrorStack
+type ListNetworkInterfacesError interface {
+	Error() string
 }
 
 //NewListNetworkInterfacesError create a new ListNetworkInterfacesError
-func NewListNetworkInterfacesError(cause error, options *ListNetworkInterfacesOptions) *ListNetworkInterfacesError {
+func NewListNetworkInterfacesError(cause error, options *ListNetworkInterfacesOptions) ListNetworkInterfacesError {
 	if cause == nil {
 		return nil
 	}
-	return &ListNetworkInterfacesError{*NewErrorStack(cause, "error listing network interfaces", options)}
+	return NewErrorStack(cause, "error listing network interfaces", options)
 }
 
 //UpdateNetworkInterfaceError update network interface error type
-type UpdateNetworkInterfaceError struct {
-	ErrorStack
+type UpdateNetworkInterfaceError interface {
+	Error() string
 }
 
 //NewUpdateNetworkInterfaceError create a new UpdateNetworkInterfaceError
-func NewUpdateNetworkInterfaceError(cause error, options UpdateNetworkInterfaceOptions) *UpdateNetworkInterfaceError {
+func NewUpdateNetworkInterfaceError(cause error, options UpdateNetworkInterfaceOptions) UpdateNetworkInterfaceError {
 	if cause == nil {
 		return nil
 	}
-	return &UpdateNetworkInterfaceError{*NewErrorStack(cause, "error updating network interface", options)}
+	return NewErrorStack(cause, "error updating network interface", options)
 }

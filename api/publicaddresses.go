@@ -46,102 +46,102 @@ type ListPublicIPsOptions struct {
 
 //PublicIPManager an interface providing an abstraction to manipulate public ip addresses
 type PublicIPManager interface {
-	ListAvailablePools() ([]PublicIPPool, *ListAvailablePublicIPPoolsError)
-	List(options *ListPublicIPsOptions) ([]PublicIP, *ListPublicIPsError)
-	Create(options CreatePublicIPOptions) (*PublicIP, *CreatePublicIPError)
-	Associate(options AssociatePublicIPOptions) *AssociatePublicIPError
-	Dissociate(id string) *DissociatePublicIPError
-	Delete(id string) *DeletePublicIPError
-	Get(id string) (*PublicIP, *GetPublicIPError)
+	ListAvailablePools() ([]PublicIPPool, ListAvailablePublicIPPoolsError)
+	List(options *ListPublicIPsOptions) ([]PublicIP, ListPublicIPsError)
+	Create(options CreatePublicIPOptions) (*PublicIP, CreatePublicIPError)
+	Associate(options AssociatePublicIPOptions) AssociatePublicIPError
+	Dissociate(id string) DissociatePublicIPError
+	Delete(id string) DeletePublicIPError
+	Get(id string) (*PublicIP, GetPublicIPError)
 }
 
 //ListAvailablePublicIPPoolsError list available public ip pools error type
-type ListAvailablePublicIPPoolsError struct {
-	ErrorStack
+type ListAvailablePublicIPPoolsError interface {
+	Error() string
 }
 
 //NewListAvailablePublicIPPoolsError create a new ListAvailablePublicIPPoolsError
-func NewListAvailablePublicIPPoolsError(cause error) *ListAvailablePublicIPPoolsError {
+func NewListAvailablePublicIPPoolsError(cause error) ListAvailablePublicIPPoolsError {
 	if cause == nil {
 		return nil
 	}
-	return &ListAvailablePublicIPPoolsError{*NewErrorStack(cause, "error listing available public ip pools")}
+	return NewErrorStack(cause, "error listing available public ip pools")
 }
 
 //ListPublicIPsError list created public ips error type
-type ListPublicIPsError struct {
-	ErrorStack
+type ListPublicIPsError interface {
+	Error() string
 }
 
 //NewListPublicIPsError create a new ListPublicIPsError
-func NewListPublicIPsError(cause error, options *ListPublicIPsOptions) *ListPublicIPsError {
+func NewListPublicIPsError(cause error, options *ListPublicIPsOptions) ListPublicIPsError {
 	if cause == nil {
 		return nil
 	}
-	return &ListPublicIPsError{*NewErrorStack(cause, "error listing created public ips", options)}
+	return NewErrorStack(cause, "error listing created public ips", options)
 }
 
 //CreatePublicIPError create public ip error type
-type CreatePublicIPError struct {
-	ErrorStack
+type CreatePublicIPError interface {
+	Error() string
 }
 
 //NewCreatePublicIPError create a new CreatePublicIPError
-func NewCreatePublicIPError(cause error, options CreatePublicIPOptions) *CreatePublicIPError {
+func NewCreatePublicIPError(cause error, options CreatePublicIPOptions) CreatePublicIPError {
 	if cause == nil {
 		return nil
 	}
-	return &CreatePublicIPError{*NewErrorStack(cause, "error creating public ip", options)}
+	return NewErrorStack(cause, "error creating public ip", options)
 }
 
 //AssociatePublicIPError associate public ip error type
-type AssociatePublicIPError struct {
-	ErrorStack
+type AssociatePublicIPError interface {
+	Error() string
 }
 
 //NewAssociatePublicIPError create a new AssociatePublicIPError
-func NewAssociatePublicIPError(cause error, options AssociatePublicIPOptions) *AssociatePublicIPError {
+func NewAssociatePublicIPError(cause error, options AssociatePublicIPOptions) AssociatePublicIPError {
 	if cause == nil {
 		return nil
 	}
-	return &AssociatePublicIPError{*NewErrorStack(cause, "error associating public ip", options)}
+	return NewErrorStack(cause, "error associating public ip", options)
 }
 
 //DissociatePublicIPError dissociate public ip error type
-type DissociatePublicIPError struct {
-	ErrorStack
+type DissociatePublicIPError interface {
+	Error() string
 }
 
 //NewDissociatePublicIPError create a new AssociatePublicIPError
-func NewDissociatePublicIPError(cause error, id string) *DissociatePublicIPError {
+func NewDissociatePublicIPError(cause error, id string) DissociatePublicIPError {
 	if cause == nil {
 		return nil
 	}
-	return &DissociatePublicIPError{*NewErrorStack(cause, "error dissociating public ip", id)}
+	return NewErrorStack(cause, "error dissociating public ip", id)
 }
 
 //DeletePublicIPError delete public ip error type
-type DeletePublicIPError struct {
-	ErrorStack
+type DeletePublicIPError interface {
+	Error() string
 }
 
 //NewDeletePublicIPError create a new DeletePublicIPError
-func NewDeletePublicIPError(cause error, id string) *DeletePublicIPError {
+func NewDeletePublicIPError(cause error, id string) DeletePublicIPError {
 	if cause == nil {
 		return nil
 	}
-	return &DeletePublicIPError{*NewErrorStack(cause, "error deleting public ip", id)}
+	return NewErrorStack(cause, "error deleting public ip", id)
 }
 
 //GetPublicIPError get public ip error type
-type GetPublicIPError struct {
-	ErrorStack
+type GetPublicIPError interface {
+	Error() string
 }
 
 //NewGetPublicIPError create a new GetPublicIPError
-func NewGetPublicIPError(cause error, id string) *GetPublicIPError {
+func NewGetPublicIPError(cause error, id string) GetPublicIPError {
 	if cause == nil {
 		return nil
 	}
-	return &GetPublicIPError{*NewErrorStack(cause, "error getting public ip", id)}
+	return NewErrorStack(cause, "error getting public ip", id)
 }

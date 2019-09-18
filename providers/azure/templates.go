@@ -46,7 +46,7 @@ func GetMeter(vmMeters []commerce.MeterInfo, sizeName string) *commerce.MeterInf
 	return nil
 }
 
-func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
+func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, api.ListServerTemplatesError) {
 	list, err := mgr.Provider.BaseServices.VirtualMachineSizesClient.List(context.Background(), mgr.Provider.Configuration.Location)
 	if err != nil {
 		return nil, api.NewListServerTemplatesError(err)
@@ -74,7 +74,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerT
 	return templates, nil
 }
 
-func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, *api.GetServerTemplateError) {
+func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, api.GetServerTemplateError) {
 	list, err := mgr.List()
 	if err != nil {
 		return nil, api.NewGetServerTemplateError(err, id)

@@ -29,7 +29,7 @@ func convert(port *ports.Port, publicIPs []api.PublicIP) *api.NetworkInterface {
 	}
 }
 
-func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, *api.CreateNetworkInterfaceError) {
+func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOptions) (*api.NetworkInterface, api.CreateNetworkInterfaceError) {
 	up := true
 	ip := ports.IP{
 		IPAddress: "",
@@ -57,12 +57,12 @@ func (mgr *NetworkInterfacesManager) Create(options api.CreateNetworkInterfaceOp
 	return convert(p, nil), nil
 }
 
-func (mgr *NetworkInterfacesManager) Delete(id string) *api.DeleteNetworkInterfaceError {
+func (mgr *NetworkInterfacesManager) Delete(id string) api.DeleteNetworkInterfaceError {
 	err := ports.Delete(mgr.Provider.BaseServices.Network, id).ExtractErr()
 	return api.NewDeleteNetworkInterfaceError(err, id)
 }
 
-func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, *api.GetNetworkInterfaceError) {
+func (mgr *NetworkInterfacesManager) Get(id string) (*api.NetworkInterface, api.GetNetworkInterfaceError) {
 	publicIPs, _ := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPsOptions{})
 	p, err := ports.Get(mgr.Provider.BaseServices.Network, id).Extract()
 	if err != nil {
@@ -120,7 +120,7 @@ func (mgr *NetworkInterfacesManager) list(options *api.ListNetworkInterfacesOpti
 	return list, nil
 }
 
-func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, *api.ListNetworkInterfacesError) {
+func (mgr *NetworkInterfacesManager) List(options *api.ListNetworkInterfacesOptions) ([]api.NetworkInterface, api.ListNetworkInterfacesError) {
 	l, err := mgr.list(options)
 	return l, api.NewListNetworkInterfacesError(err, options)
 }
@@ -140,7 +140,7 @@ func (mgr *NetworkInterfacesManager) update(options api.UpdateNetworkInterfaceOp
 	return convert(port, publicIPs), nil
 }
 
-func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, *api.UpdateNetworkInterfaceError) {
+func (mgr *NetworkInterfacesManager) Update(options api.UpdateNetworkInterfaceOptions) (*api.NetworkInterface, api.UpdateNetworkInterfaceError) {
 	ni, err := mgr.Update(options)
 	return ni, api.NewUpdateNetworkInterfaceError(err, options)
 }

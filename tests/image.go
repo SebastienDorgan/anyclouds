@@ -22,9 +22,10 @@ func (s *ImageManagerTestSuite) TestImageManager() {
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), images)
 	for _, img := range images {
-		fmt.Printf("%v\n", img)
+		fmt.Printf("%+v\n", img)
 		image, err := s.Mgr.Get(img.ID)
 		assert.NoError(s.T(), err)
 		assert.True(s.T(), reflect.DeepEqual(img, *image))
 	}
+	fmt.Println(len(images))
 }

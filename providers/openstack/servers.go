@@ -79,7 +79,7 @@ func (mgr *ServerManager) createServer(options *api.CreateServerOptions) (*api.S
 }
 
 //Create creates an Server with options
-func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, *api.CreateServerError) {
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, api.CreateServerError) {
 	srv, err := mgr.createServer(&options)
 	if err != nil {
 		return nil, api.NewCreateServerError(err, options)
@@ -106,7 +106,7 @@ func (mgr *ServerManager) findIP(srvID string) *floatingips.FloatingIP {
 }
 
 //Delete delete Server identified by id
-func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
+func (mgr *ServerManager) Delete(id string) api.DeleteServerError {
 	ip := mgr.findIP(id)
 	err := servers.Delete(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	if err != nil {
@@ -160,7 +160,7 @@ func (mgr *ServerManager) server(srv *servers.Server) *api.Server {
 }
 
 //List list Servers
-func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
+func (mgr *ServerManager) List() ([]api.Server, api.ListServersError) {
 	page, err := servers.List(mgr.Provider.BaseServices.Compute, servers.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, api.NewListServersError(UnwrapOpenStackError(err))
@@ -179,19 +179,19 @@ func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
 }
 
 //Get get Servers
-func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
+func (mgr *ServerManager) Get(id string) (*api.Server, api.GetServerError) {
 	srv, err := servers.Get(mgr.Provider.BaseServices.Compute, id).Extract()
 	return mgr.server(srv), api.NewGetServerError(UnwrapOpenStackError(err), id)
 }
 
 //Start starts an Server
-func (mgr *ServerManager) Start(id string) *api.StartServerError {
+func (mgr *ServerManager) Start(id string) api.StartServerError {
 	err := startstop.Start(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	return api.NewStartServerError(UnwrapOpenStackError(err), id)
 }
 
 //Stop stops an Server
-func (mgr *ServerManager) Stop(id string) *api.StopServerError {
+func (mgr *ServerManager) Stop(id string) api.StopServerError {
 	err := startstop.Stop(mgr.Provider.BaseServices.Compute, id).ExtractErr()
 	return api.NewStopServerError(UnwrapOpenStackError(err), id)
 }
@@ -208,7 +208,7 @@ func (mgr *ServerManager) waitResize(id string) *retry.Result {
 }
 
 //Resize resize a server
-func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServerError {
+func (mgr *ServerManager) Resize(id string, templateID string) api.ResizeServerError {
 	err := servers.Resize(mgr.Provider.BaseServices.Compute, id, servers.ResizeOpts{
 		FlavorRef: templateID,
 	}).ExtractErr()

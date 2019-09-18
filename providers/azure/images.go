@@ -63,7 +63,7 @@ func (mgr *ImageManager) list() ([]api.Image, error) {
 
 }
 
-func (mgr *ImageManager) List() ([]api.Image, *api.ListImageError) {
+func (mgr *ImageManager) List() ([]api.Image, api.ListImageError) {
 	l, err := mgr.list()
 	return l, api.NewListImageError(err)
 }
@@ -85,7 +85,7 @@ func (mgr *ImageManager) get(id string) (*api.Image, error) {
 	}, nil
 }
 
-func (mgr *ImageManager) Get(id string) (*api.Image, *api.GetImageError) {
+func (mgr *ImageManager) Get(id string) (*api.Image, api.GetImageError) {
 	i, err := mgr.get(id)
 	return i, api.NewGetImageError(err, id)
 }

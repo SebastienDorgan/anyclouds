@@ -191,7 +191,7 @@ func (mgr *ServerManager) createReservedInstance(options *api.CreateServerOption
 }
 
 //Create creates an Server with options
-func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, *api.CreateServerError) {
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, api.CreateServerError) {
 	var id *string
 	var err error
 	if options.LowPriorityServerOptions != nil && options.ReservedServerOptions != nil {
@@ -266,7 +266,7 @@ func (mgr *ServerManager) addSecurityGroups(options *api.CreateServerOptions, in
 }
 
 //Delete delete Server identified by id
-func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
+func (mgr *ServerManager) Delete(id string) api.DeleteServerError {
 	var err error
 	publicIps, err := mgr.Provider.PublicIPAddressManager.List(&api.ListPublicIPsOptions{ServerID: &id})
 	if err != nil {
@@ -306,7 +306,7 @@ func mapToSlice(in map[string]*api.Server) []api.Server {
 }
 
 //List list Servers
-func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
+func (mgr *ServerManager) List() ([]api.Server, api.ListServersError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
 	if err != nil {
 		return nil, api.NewListServersError(err)
@@ -402,7 +402,7 @@ func (mgr *ServerManager) getReservedInstance(id string) (*ec2.ReservedInstances
 }
 
 //Get get Servers
-func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
+func (mgr *ServerManager) Get(id string) (*api.Server, api.GetServerError) {
 
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
@@ -428,7 +428,7 @@ func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
 }
 
 //Start starts an Server
-func (mgr *ServerManager) Start(id string) *api.StartServerError {
+func (mgr *ServerManager) Start(id string) api.StartServerError {
 	_, err := mgr.Provider.AWSServices.EC2Client.StartInstances(&ec2.StartInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
@@ -439,7 +439,7 @@ func (mgr *ServerManager) Start(id string) *api.StartServerError {
 }
 
 //Stop stops an Server
-func (mgr *ServerManager) Stop(id string) *api.StopServerError {
+func (mgr *ServerManager) Stop(id string) api.StopServerError {
 	_, err := mgr.Provider.AWSServices.EC2Client.StopInstances(&ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
@@ -450,7 +450,7 @@ func (mgr *ServerManager) Stop(id string) *api.StopServerError {
 }
 
 //Resize resize a server
-func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServerError {
+func (mgr *ServerManager) Resize(id string, templateID string) api.ResizeServerError {
 	_, err := mgr.Provider.AWSServices.OpsWorksClient.UpdateInstance(&opsworks.UpdateInstanceInput{})
 	if err != nil {
 		return api.NewResizeServerError(err, id, templateID)

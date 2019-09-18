@@ -29,7 +29,7 @@ func (mgr *VolumeManager) selectVolumeType(options *api.CreateVolumeOptions) str
 }
 
 //Create creates a volume with options
-func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, *api.CreateVolumeError) {
+func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, api.CreateVolumeError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.CreateVolume(&ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(mgr.Provider.Configuration.AvailabilityZone),
 		DryRun:           aws.Bool(false),
@@ -66,7 +66,7 @@ func (mgr *VolumeManager) Create(options api.CreateVolumeOptions) (*api.Volume, 
 }
 
 //Delete deletes volume identified by id
-func (mgr *VolumeManager) Delete(id string) *api.DeleteVolumeError {
+func (mgr *VolumeManager) Delete(id string) api.DeleteVolumeError {
 	_, err := mgr.Provider.AWSServices.EC2Client.DeleteVolume(&ec2.DeleteVolumeInput{
 		DryRun:   aws.Bool(false),
 		VolumeId: aws.String(id),
@@ -128,7 +128,7 @@ func volume(v *ec2.Volume) *api.Volume {
 }
 
 //List lists volumes along filter
-func (mgr *VolumeManager) List() ([]api.Volume, *api.ListVolumesError) {
+func (mgr *VolumeManager) List() ([]api.Volume, api.ListVolumesError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
@@ -154,7 +154,7 @@ func (mgr *VolumeManager) List() ([]api.Volume, *api.ListVolumesError) {
 }
 
 //Get returns volume details
-func (mgr *VolumeManager) Get(id string) (*api.Volume, *api.GetVolumeError) {
+func (mgr *VolumeManager) Get(id string) (*api.Volume, api.GetVolumeError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeVolumes(&ec2.DescribeVolumesInput{
 		DryRun: aws.Bool(false),
 		Filters: []*ec2.Filter{
@@ -180,7 +180,7 @@ func (mgr *VolumeManager) Get(id string) (*api.Volume, *api.GetVolumeError) {
 }
 
 //Attach attaches a volume to an Server
-func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, *api.AttachVolumeError) {
+func (mgr *VolumeManager) Attach(options api.AttachVolumeOptions) (*api.VolumeAttachment, api.AttachVolumeError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.AttachVolume(&ec2.AttachVolumeInput{
 		Device:     aws.String(options.DevicePath),
 		DryRun:     aws.Bool(false),
@@ -205,7 +205,7 @@ func attachment(out *ec2.VolumeAttachment) *api.VolumeAttachment {
 }
 
 //Detach detach a volume from an Server
-func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) *api.DetachVolumeError {
+func (mgr *VolumeManager) Detach(options api.DetachVolumeOptions) api.DetachVolumeError {
 	_, err := mgr.Provider.AWSServices.EC2Client.DetachVolume(&ec2.DetachVolumeInput{
 		Device:     nil,
 		DryRun:     aws.Bool(false),
@@ -269,13 +269,13 @@ func (mgr *VolumeManager) attachments(options *api.ListAttachmentsOptions) ([]ap
 }
 
 //ListAttachments returns all the attachments of an Server
-func (mgr *VolumeManager) ListAttachments(options *api.ListAttachmentsOptions) ([]api.VolumeAttachment, *api.ListVolumeAttachmentsError) {
+func (mgr *VolumeManager) ListAttachments(options *api.ListAttachmentsOptions) ([]api.VolumeAttachment, api.ListVolumeAttachmentsError) {
 	attachments, err := mgr.attachments(options)
 	return attachments, api.NewListVolumeAttachmentsError(err, options)
 
 }
 
-func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, *api.ResizeVolumeError) {
+func (mgr *VolumeManager) Resize(options api.ResizeVolumeOptions) (*api.Volume, api.ResizeVolumeError) {
 	vType := mgr.selectVolumeType(&api.CreateVolumeOptions{
 		Name:        "",
 		Size:        options.Size,

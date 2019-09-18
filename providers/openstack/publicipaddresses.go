@@ -13,7 +13,7 @@ type PublicIPManager struct {
 	OpenStack *Provider
 }
 
-func (mgr *PublicIPManager) ListAvailablePools() ([]api.PublicIPPool, *api.ListAvailablePublicIPPoolsError) {
+func (mgr *PublicIPManager) ListAvailablePools() ([]api.PublicIPPool, api.ListAvailablePublicIPPoolsError) {
 	subnets, err := mgr.OpenStack.GetNetworkManager().ListSubnets(mgr.OpenStack.Config.ExternalNetworkID)
 	if err != nil {
 		return nil, api.NewListAvailablePublicIPPoolsError(UnwrapOpenStackError(err))
@@ -52,7 +52,7 @@ func checkPublicIP(nis []api.NetworkInterface, fip *floatingips.FloatingIP) bool
 	return false
 }
 
-func (mgr *PublicIPManager) List(options *api.ListPublicIPsOptions) ([]api.PublicIP, *api.ListPublicIPsError) {
+func (mgr *PublicIPManager) List(options *api.ListPublicIPsOptions) ([]api.PublicIP, api.ListPublicIPsError) {
 	pages, err := floatingips.List(mgr.OpenStack.BaseServices.Network, floatingips.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, api.NewListPublicIPsError(UnwrapOpenStackError(err), options)
@@ -78,7 +78,7 @@ func (mgr *PublicIPManager) List(options *api.ListPublicIPsOptions) ([]api.Publi
 	}
 	return publicIPs, nil
 }
-func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.PublicIP, *api.CreatePublicIPError) {
+func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.PublicIP, api.CreatePublicIPError) {
 	var ipAddress string
 	if options.IPAddress != nil {
 		ipAddress = *options.IPAddress
@@ -103,7 +103,7 @@ func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.Publ
 	}, nil
 }
 
-func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) *api.AssociatePublicIPError {
+func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) api.AssociatePublicIPError {
 	fip, err := floatingips.Get(mgr.OpenStack.BaseServices.Network, options.PublicIPId).Extract()
 	if err != nil {
 		return api.NewAssociatePublicIPError(UnwrapOpenStackError(err), options)
@@ -159,7 +159,7 @@ func (mgr *PublicIPManager) listPorts(serverID string) ([]ports.Port, error) {
 	return portList, err
 }
 
-func (mgr *PublicIPManager) Dissociate(publicIPID string) *api.DissociatePublicIPError {
+func (mgr *PublicIPManager) Dissociate(publicIPID string) api.DissociatePublicIPError {
 	var err error
 	pip, err := mgr.Get(publicIPID)
 	if err != nil {
@@ -173,12 +173,12 @@ func (mgr *PublicIPManager) Dissociate(publicIPID string) *api.DissociatePublicI
 	return api.NewDissociatePublicIPError(UnwrapOpenStackError(err), publicIPID)
 
 }
-func (mgr *PublicIPManager) Delete(publicIPId string) *api.DeletePublicIPError {
+func (mgr *PublicIPManager) Delete(publicIPId string) api.DeletePublicIPError {
 	err := floatingips.Delete(mgr.OpenStack.BaseServices.Network, publicIPId).ExtractErr()
 	return api.NewDeletePublicIPError(UnwrapOpenStackError(err), publicIPId)
 }
 
-func (mgr *PublicIPManager) Get(publicIPID string) (*api.PublicIP, *api.GetPublicIPError) {
+func (mgr *PublicIPManager) Get(publicIPID string) (*api.PublicIP, api.GetPublicIPError) {
 	fip, err := floatingips.Get(mgr.OpenStack.BaseServices.Network, publicIPID).Extract()
 	if err != nil {
 		return nil, api.NewGetPublicIPError(UnwrapOpenStackError(err), publicIPID)

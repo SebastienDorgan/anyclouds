@@ -87,69 +87,69 @@ type AttachSecurityGroupOptions struct {
 //SecurityGroupManager defines security group management functions a anyclouds provider must provide
 type SecurityGroupManager interface {
 	//Create a security group
-	Create(options SecurityGroupOptions) (*SecurityGroup, *CreateSecurityGroupError)
+	Create(options SecurityGroupOptions) (*SecurityGroup, CreateSecurityGroupError)
 	//Delete a security group
-	Delete(id string) *DeleteSecurityGroupError
+	Delete(id string) DeleteSecurityGroupError
 	//List security groups
-	List() ([]SecurityGroup, *ListSecurityGroupsError)
+	List() ([]SecurityGroup, ListSecurityGroupsError)
 	//Get security group
-	Get(id string) (*SecurityGroup, *GetSecurityGroupError)
+	Get(id string) (*SecurityGroup, GetSecurityGroupError)
 	//Attach a security group to a server
-	Attach(options AttachSecurityGroupOptions) *AttachSecurityGroupError
+	Attach(options AttachSecurityGroupOptions) AttachSecurityGroupError
 	//Add a rule to a security group
-	AddSecurityRule(options AddSecurityRuleOptions) (*SecurityRule, *AddSecurityRuleError)
+	AddSecurityRule(options AddSecurityRuleOptions) (*SecurityRule, AddSecurityRuleError)
 	//Delete a rule
-	RemoveSecurityRule(groupID, ruleID string) *RemoveSecurityRuleError
+	RemoveSecurityRule(groupID, ruleID string) RemoveSecurityRuleError
 }
 
 //CreateSecurityGroupError create security group error type
-type CreateSecurityGroupError struct {
-	ErrorStack
+type CreateSecurityGroupError interface {
+	Error() string
 }
 
 //NewCreateSecurityGroupError creates a new CreateSecurityGroupError
-func NewCreateSecurityGroupError(cause error, options SecurityGroupOptions) *CreateSecurityGroupError {
-	return &CreateSecurityGroupError{ErrorStack: *NewErrorStack(cause, "error creating security group", options)}
+func NewCreateSecurityGroupError(cause error, options SecurityGroupOptions) CreateSecurityGroupError {
+	return NewErrorStack(cause, "error creating security group", options)
 }
 
 //DeleteSecurityGroupError delete security group error type
-type DeleteSecurityGroupError struct {
-	ErrorStack
+type DeleteSecurityGroupError interface {
+	Error() string
 }
 
 //NewDeleteSecurityGroupError creates a new DeleteSecurityGroupError
-func NewDeleteSecurityGroupError(cause error, id string) *DeleteSecurityGroupError {
-	return &DeleteSecurityGroupError{ErrorStack: *NewErrorStack(cause, "error deleting security group", id)}
+func NewDeleteSecurityGroupError(cause error, id string) DeleteSecurityGroupError {
+	return NewErrorStack(cause, "error deleting security group", id)
 }
 
 //ListSecurityGroupsError list security group error type
-type ListSecurityGroupsError struct {
-	ErrorStack
+type ListSecurityGroupsError interface {
+	Error() string
 }
 
 //NewListSecurityGroupsError creates a new ListSecurityGroupsError
-func NewListSecurityGroupsError(cause error) *ListSecurityGroupsError {
-	return &ListSecurityGroupsError{ErrorStack: *NewErrorStack(cause, "error listing security groups")}
+func NewListSecurityGroupsError(cause error) ListSecurityGroupsError {
+	return NewErrorStack(cause, "error listing security groups")
 }
 
 //GetSecurityGroupError get security group error type
-type GetSecurityGroupError struct {
-	ErrorStack
+type GetSecurityGroupError interface {
+	Error() string
 }
 
 //NewGetSecurityGroupError creates a new GetSecurityGroupError
-func NewGetSecurityGroupError(cause error, id string) *GetSecurityGroupError {
-	return &GetSecurityGroupError{ErrorStack: *NewErrorStack(cause, "error getting security group", id)}
+func NewGetSecurityGroupError(cause error, id string) GetSecurityGroupError {
+	return NewErrorStack(cause, "error getting security group", id)
 }
 
 //AttachSecurityGroupError attach security group error type
-type AttachSecurityGroupError struct {
-	ErrorStack
+type AttachSecurityGroupError interface {
+	Error() string
 }
 
 //NewAttachSecurityGroupError creates a new AttachSecurityGroupError
-func NewAttachSecurityGroupError(cause error, options AttachSecurityGroupOptions) *AttachSecurityGroupError {
-	return &AttachSecurityGroupError{ErrorStack: *NewErrorStack(cause, "error attaching security group", options)}
+func NewAttachSecurityGroupError(cause error, options AttachSecurityGroupOptions) AttachSecurityGroupError {
+	return NewErrorStack(cause, "error attaching security group", options)
 }
 
 ////DetachSecurityGroupError detach security group error type
@@ -163,21 +163,21 @@ func NewAttachSecurityGroupError(cause error, options AttachSecurityGroupOptions
 //}
 
 //AddSecurityRuleError add security rule error type
-type AddSecurityRuleError struct {
-	ErrorStack
+type AddSecurityRuleError interface {
+	Error() string
 }
 
 //NewAddSecurityRuleError creates a new AddSecurityRuleError
-func NewAddSecurityRuleError(cause error, options AddSecurityRuleOptions) *AddSecurityRuleError {
-	return &AddSecurityRuleError{ErrorStack: *NewErrorStack(cause, "error adding security rule", options)}
+func NewAddSecurityRuleError(cause error, options AddSecurityRuleOptions) AddSecurityRuleError {
+	return NewErrorStack(cause, "error adding security rule", options)
 }
 
 //RemoveSecurityRuleError remove security rule error type
-type RemoveSecurityRuleError struct {
-	ErrorStack
+type RemoveSecurityRuleError interface {
+	Error() string
 }
 
 //NewRemoveSecurityRuleError creates a new RemoveSecurityRuleError
-func NewRemoveSecurityRuleError(cause error, id string, ruleID string) *RemoveSecurityRuleError {
-	return &RemoveSecurityRuleError{ErrorStack: *NewErrorStack(cause, "error removing security rule", id, ruleID)}
+func NewRemoveSecurityRuleError(cause error, id string, ruleID string) RemoveSecurityRuleError {
+	return NewErrorStack(cause, "error removing security rule", id, ruleID)
 }

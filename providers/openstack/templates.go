@@ -11,7 +11,7 @@ type ServerTemplateManager struct {
 }
 
 //List returns available VM templates
-func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
+func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, api.ListServerTemplatesError) {
 	page, err := flavors.ListDetail(mgr.Provider.BaseServices.Compute, flavors.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, api.NewListServerTemplatesError(err)
@@ -35,7 +35,7 @@ func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerT
 }
 
 //Get returns the template identified by ids
-func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, *api.GetServerTemplateError) {
+func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, api.GetServerTemplateError) {
 	f, err := flavors.Get(mgr.Provider.BaseServices.Compute, id).Extract()
 	if err != nil {
 		return nil, api.NewGetServerTemplateError(err, id)

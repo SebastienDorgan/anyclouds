@@ -58,7 +58,7 @@ func (mgr *PublicIPManager) getPublicAddressPools(url string) ([]AddressPool, er
 	return selection, err
 }
 
-func (mgr *PublicIPManager) ListAvailablePools() ([]api.PublicIPPool, *api.ListAvailablePublicIPPoolsError) {
+func (mgr *PublicIPManager) ListAvailablePools() ([]api.PublicIPPool, api.ListAvailablePublicIPPoolsError) {
 	addressPools, err := mgr.getPublicAddressPools(mgr.Provider.Configuration.PublicAddressesURL)
 	if err != nil {
 		return nil, api.NewListAvailablePublicIPPoolsError(err)
@@ -98,7 +98,7 @@ func checkAddress(addresses []string, address *string) bool {
 	return false
 }
 
-func (mgr *PublicIPManager) List(options *api.ListPublicIPsOptions) ([]api.PublicIP, *api.ListPublicIPsError) {
+func (mgr *PublicIPManager) List(options *api.ListPublicIPsOptions) ([]api.PublicIP, api.ListPublicIPsError) {
 	var addresses []string
 	if options != nil && options.ServerID != nil {
 		nis, err := mgr.Provider.NetworkInterfacesManager.List(&api.ListNetworkInterfacesOptions{
@@ -142,7 +142,7 @@ func convertAddress(address *network.PublicIPAddress) *api.PublicIP {
 	}
 }
 
-func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.PublicIP, *api.CreatePublicIPError) {
+func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.PublicIP, api.CreatePublicIPError) {
 	future, err := mgr.Provider.BaseServices.PublicIPAddressesClient.CreateOrUpdate(
 		context.Background(),
 		mgr.Provider.Configuration.ResourceGroupName,
@@ -178,7 +178,7 @@ func (mgr *PublicIPManager) Create(options api.CreatePublicIPOptions) (*api.Publ
 	return convertAddress(&ip), nil
 }
 
-func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) *api.AssociatePublicIPError {
+func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) api.AssociatePublicIPError {
 	nis, err := mgr.Provider.NetworkInterfacesManager.listAzure(&api.ListNetworkInterfacesOptions{
 		SubnetID: &options.SubnetID,
 		ServerID: &options.ServerID,
@@ -215,7 +215,7 @@ func (mgr *PublicIPManager) Associate(options api.AssociatePublicIPOptions) *api
 
 }
 
-func (mgr *PublicIPManager) Dissociate(publicIPId string) *api.DissociatePublicIPError {
+func (mgr *PublicIPManager) Dissociate(publicIPId string) api.DissociatePublicIPError {
 	var err error
 	ip, err := mgr.Get(publicIPId)
 	if err != nil {
@@ -246,7 +246,7 @@ func (mgr *PublicIPManager) Dissociate(publicIPId string) *api.DissociatePublicI
 	return api.NewDissociatePublicIPError(err, publicIPId)
 }
 
-func (mgr *PublicIPManager) Delete(publicIPId string) *api.DeletePublicIPError {
+func (mgr *PublicIPManager) Delete(publicIPId string) api.DeletePublicIPError {
 	_, err := mgr.Provider.BaseServices.PublicIPAddressesClient.Delete(context.Background(), mgr.Provider.Configuration.ResourceGroupName, publicIPId)
 	return api.NewDeletePublicIPError(err, publicIPId)
 }
@@ -256,7 +256,7 @@ func (mgr *PublicIPManager) get(publicIPId string) (*network.PublicIPAddress, er
 	return &addr, err
 }
 
-func (mgr *PublicIPManager) Get(publicIPId string) (*api.PublicIP, *api.GetPublicIPError) {
+func (mgr *PublicIPManager) Get(publicIPId string) (*api.PublicIP, api.GetPublicIPError) {
 	ip, err := mgr.get(publicIPId)
 	return convertAddress(ip), api.NewGetPublicIPError(err, publicIPId)
 }

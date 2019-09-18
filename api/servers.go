@@ -76,81 +76,81 @@ type CreateServerOptions struct {
 
 //ServerManager defines Server management functions an anyclouds provider must provide
 type ServerManager interface {
-	Create(options CreateServerOptions) (*Server, *CreateServerError)
-	Delete(id string) *DeleteServerError
-	List() ([]Server, *ListServersError)
-	Get(id string) (*Server, *GetServerError)
-	Start(id string) *StartServerError
-	Stop(id string) *StopServerError
-	Resize(id string, templateID string) *ResizeServerError
+	Create(options CreateServerOptions) (*Server, CreateServerError)
+	Delete(id string) DeleteServerError
+	List() ([]Server, ListServersError)
+	Get(id string) (*Server, GetServerError)
+	Start(id string) StartServerError
+	Stop(id string) StopServerError
+	Resize(id string, templateID string) ResizeServerError
 }
 
 //CreateServerError create server error type
-type CreateServerError struct {
-	ErrorStack
+type CreateServerError interface {
+	Error() string
 }
 
 //NewCreateServerError creates a new CreateServerError
-func NewCreateServerError(cause error, options CreateServerOptions) *CreateServerError {
-	return &CreateServerError{ErrorStack: *NewErrorStack(cause, "error creating server", options)}
+func NewCreateServerError(cause error, options CreateServerOptions) CreateServerError {
+	return NewErrorStack(cause, "error creating server", options)
 }
 
 //DeleteServerError delete server error type
-type DeleteServerError struct {
-	ErrorStack
+type DeleteServerError interface {
+	Error() string
 }
 
 //NewDeleteServerError creates a new DeleteServerError
-func NewDeleteServerError(cause error, id string) *DeleteServerError {
-	return &DeleteServerError{ErrorStack: *NewErrorStack(cause, "error deleting server", id)}
+func NewDeleteServerError(cause error, id string) DeleteServerError {
+	return NewErrorStack(cause, "error deleting server", id)
 }
 
 //ListServersError list servers error type
-type ListServersError struct {
-	ErrorStack
+type ListServersError interface {
+	Error() string
 }
 
 //NewListServersError creates a new ListServersError
-func NewListServersError(cause error) *ListServersError {
-	return &ListServersError{ErrorStack: *NewErrorStack(cause, "error listing servers")}
+func NewListServersError(cause error) ListServersError {
+	return NewErrorStack(cause, "error listing servers")
 }
 
 //GetServerError get server error type
-type GetServerError struct {
-	ErrorStack
+type GetServerError interface {
+	Error() string
 }
 
 //NewGetServerError creates a new GetServerError
-func NewGetServerError(cause error, id string) *GetServerError {
-	return &GetServerError{ErrorStack: *NewErrorStack(cause, "error getting server", id)}
+func NewGetServerError(cause error, id string) GetServerError {
+	return NewErrorStack(cause, "error getting server", id)
 }
 
 //StartServerError start server error type
-type StartServerError struct {
-	ErrorStack
+type StartServerError interface {
+	Error() string
 }
 
 //NewStartServerError creates a new StartServerError
-func NewStartServerError(cause error, id string) *StartServerError {
-	return &StartServerError{ErrorStack: *NewErrorStack(cause, "error starting server", id)}
+func NewStartServerError(cause error, id string) StartServerError {
+	return NewErrorStack(cause, "error starting server", id)
 }
 
 //StopServerError start server error type
-type StopServerError struct {
-	ErrorStack
+type StopServerError interface {
+	Error() string
 }
 
 //NewStopServerError creates a new StopServerError
-func NewStopServerError(cause error, id string) *StopServerError {
-	return &StopServerError{ErrorStack: *NewErrorStack(cause, "error stopping server", id)}
+func NewStopServerError(cause error, id string) StopServerError {
+	return NewErrorStack(cause, "error stopping server", id)
 }
 
 //ResizeServerError start server error type
-type ResizeServerError struct {
-	ErrorStack
+type ResizeServerError interface {
+	Error() string
 }
 
 //NewResizeServerError creates a new ResizeServerError
-func NewResizeServerError(cause error, id string, templateID string) *ResizeServerError {
-	return &ResizeServerError{ErrorStack: *NewErrorStack(cause, "error resizing server", id, templateID)}
+func NewResizeServerError(cause error, id string, templateID string) ResizeServerError {
+	return NewErrorStack(cause, "error resizing server", id, templateID)
 }

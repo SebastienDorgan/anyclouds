@@ -232,7 +232,7 @@ func (mgr *ServerTemplateManager) createFilters() []*pricing.Filter {
 }
 
 //List returns available VM templates
-func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, *api.ListServerTemplatesError) {
+func (mgr *ServerTemplateManager) List() ([]api.ServerTemplate, api.ListServerTemplatesError) {
 	filters := mgr.createFilters()
 	out, err := mgr.Provider.AWSServices.PricingClient.GetProducts(&pricing.GetProductsInput{
 		Filters:       filters,
@@ -271,7 +271,7 @@ func appendProducts(out *pricing.GetProductsOutput, result []api.ServerTemplate)
 }
 
 //Get returns the template identified by ids
-func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, *api.GetServerTemplateError) {
+func (mgr *ServerTemplateManager) Get(id string) (*api.ServerTemplate, api.GetServerTemplateError) {
 	filters := append(mgr.createFilters(), &pricing.Filter{
 		Field: aws.String("instanceType"),
 		Type:  aws.String("TERM_MATCH"),

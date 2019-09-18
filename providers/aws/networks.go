@@ -15,7 +15,7 @@ type NetworkManager struct {
 }
 
 //CreateNetwork creates a network
-func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api.Network, *api.CreateNetworkError) {
+func (mgr *NetworkManager) CreateNetwork(options api.CreateNetworkOptions) (*api.Network, api.CreateNetworkError) {
 	n, err := mgr.createNetwork(options)
 	return n, api.NewCreateNetworkError(err, options)
 }
@@ -98,7 +98,7 @@ func (mgr *NetworkManager) getInternetGateway(vpcID string) (*ec2.DescribeIntern
 }
 
 //DeleteNetwork deletes the network identified by id
-func (mgr *NetworkManager) DeleteNetwork(id string) *api.DeleteNetworkError {
+func (mgr *NetworkManager) DeleteNetwork(id string) api.DeleteNetworkError {
 	return api.NewDeleteNetworkError(mgr.deleteNetwork(id), id)
 }
 
@@ -148,7 +148,7 @@ func network(v *ec2.Vpc) *api.Network {
 }
 
 //ListNetworks lists networks
-func (mgr *NetworkManager) ListNetworks() ([]api.Network, *api.ListNetworksError) {
+func (mgr *NetworkManager) ListNetworks() ([]api.Network, api.ListNetworksError) {
 	ns, err := mgr.ListNetworks()
 	return ns, api.NewListNetworksError(err)
 }
@@ -166,7 +166,7 @@ func (mgr *NetworkManager) listNetworks() ([]api.Network, error) {
 }
 
 //GetNetwork returns the configuration of the network identified by id
-func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, *api.GetNetworkError) {
+func (mgr *NetworkManager) GetNetwork(id string) (*api.Network, api.GetNetworkError) {
 	n, err := mgr.getNetwork(id)
 	return n, api.NewGetNetworkError(err, id)
 }
@@ -207,7 +207,7 @@ func subnet(s *ec2.Subnet) *api.Subnet {
 }
 
 //CreateSubnet creates a subnet
-func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.Subnet, *api.CreateSubnetError) {
+func (mgr *NetworkManager) CreateSubnet(options api.CreateSubnetOptions) (*api.Subnet, api.CreateSubnetError) {
 	sn, err := mgr.createSubnet(options)
 	return sn, api.NewCreateSubnetError(err, options)
 }
@@ -287,7 +287,7 @@ func (mgr *NetworkManager) populateRouteTable(networkID string, gw *ec2.Internet
 }
 
 //DeleteSubnet deletes the subnet identified by id
-func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) *api.DeleteSubnetError {
+func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) api.DeleteSubnetError {
 	_, err := mgr.Provider.AWSServices.EC2Client.DeleteSubnet(&ec2.DeleteSubnetInput{
 		SubnetId: &subnetID,
 	})
@@ -295,7 +295,7 @@ func (mgr *NetworkManager) DeleteSubnet(networkID, subnetID string) *api.DeleteS
 }
 
 //ListSubnets lists the subnet
-func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.ListSubnetsError) {
+func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, api.ListSubnetsError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			{
@@ -317,7 +317,7 @@ func (mgr *NetworkManager) ListSubnets(networkID string) ([]api.Subnet, *api.Lis
 }
 
 //GetSubnet returns the configuration of the subnet identified by id
-func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, *api.GetSubnetError) {
+func (mgr *NetworkManager) GetSubnet(networkID, subnetID string) (*api.Subnet, api.GetSubnetError) {
 	out, err := mgr.Provider.AWSServices.EC2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		SubnetIds: []*string{&subnetID},
 	})

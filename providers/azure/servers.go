@@ -43,7 +43,7 @@ func (mgr *ServerManager) createNetworkInterfaces(options *api.CreateServerOptio
 	}
 	return nis, nil
 }
-func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, *api.CreateServerError) {
+func (mgr *ServerManager) Create(options api.CreateServerOptions) (*api.Server, api.CreateServerError) {
 	publisher, offer, sku, version := parseImageID(options.ImageID)
 	nis, err := mgr.createNetworkInterfaces(&options)
 	if err != nil {
@@ -134,7 +134,7 @@ func (mgr *ServerManager) server(vm *compute.VirtualMachine) *api.Server {
 	return srv
 }
 
-func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
+func (mgr *ServerManager) Delete(id string) api.DeleteServerError {
 	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.Delete(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewDeleteServerError(err, id)
@@ -143,7 +143,7 @@ func (mgr *ServerManager) Delete(id string) *api.DeleteServerError {
 	return api.NewDeleteServerError(err, id)
 }
 
-func (mgr *ServerManager) List() ([]api.Server, *api.ListServersError) {
+func (mgr *ServerManager) List() ([]api.Server, api.ListServersError) {
 	it, err := mgr.Provider.BaseServices.VirtualMachinesClient.List(context.Background(), mgr.resourceGroup())
 	if err != nil {
 		return nil, api.NewListServersError(err)
@@ -186,12 +186,12 @@ func (mgr *ServerManager) get(id string) (*compute.VirtualMachine, error) {
 	return &res, err
 }
 
-func (mgr *ServerManager) Get(id string) (*api.Server, *api.GetServerError) {
+func (mgr *ServerManager) Get(id string) (*api.Server, api.GetServerError) {
 	vm, err := mgr.get(id)
 	return mgr.server(vm), api.NewGetServerError(err, id)
 }
 
-func (mgr *ServerManager) Start(id string) *api.StartServerError {
+func (mgr *ServerManager) Start(id string) api.StartServerError {
 	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.Start(context.Background(), mgr.resourceGroup(), id)
 	if err != nil {
 		return api.NewStartServerError(err, id)
@@ -200,7 +200,7 @@ func (mgr *ServerManager) Start(id string) *api.StartServerError {
 	return api.NewStartServerError(err, id)
 }
 
-func (mgr *ServerManager) Stop(id string) *api.StopServerError {
+func (mgr *ServerManager) Stop(id string) api.StopServerError {
 	future, err := mgr.Provider.BaseServices.VirtualMachinesClient.PowerOff(context.Background(), mgr.resourceGroup(), id, to.BoolPtr(false))
 	if err != nil {
 		return api.NewStopServerError(err, id)
@@ -209,7 +209,7 @@ func (mgr *ServerManager) Stop(id string) *api.StopServerError {
 	return api.NewStopServerError(err, id)
 }
 
-func (mgr *ServerManager) Resize(id string, templateID string) *api.ResizeServerError {
+func (mgr *ServerManager) Resize(id string, templateID string) api.ResizeServerError {
 	vm, err := mgr.get(id)
 	if err != nil {
 		return api.NewResizeServerError(err, id, templateID)
